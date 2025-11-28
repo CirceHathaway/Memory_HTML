@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juego de Memoria Emoji - Modo Campaña</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden; /* Evitar scroll horizontal */
+        }
+
+        /* --- Menú Principal --- */
+        .menu-btn {
+            background: white;
+            color: #4f46e5;
+            font-weight: 800;
+            padding: 1rem 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s, box-shadow 0.1s;
+            width: 100%;
+            max-width: 250px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 1.25rem;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* --- Tablero de Juego --- */
+        .grid-container {
+            display: grid;
+            gap: 0.35rem; /* Gap reducido para aprovechar espacio en móvil */
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            /* Auto-fit al viewport height para que quepa en celulares */
+            max-height: 75vh; 
+        }
+
+        .memory-card {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.4s;
+            cursor: pointer;
+            /* Evita el parpadeo en móviles */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .memory-card.flip {
+            transform: rotateY(180deg);
+        }
+
+        .front-face,
+        .back-face {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            border-radius: 12%; /* Redondez relativa al tamaño */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backface-visibility: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+            user-select: none;
+        }
+
+        .front-face {
+            background: white;
+            transform: rotateY(180deg);
+            border: 2px solid #fff;
+            overflow: hidden; /* Asegura que el emoji no se salga */
+            line-height: 1; /* Centrado vertical estricto */
+        }
+        
+        /* Clase para el emoji grande */
+        .emoji-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            transform: scale(1.3); /* Truco para agrandar visualmente sin afectar layout */
+        }
+
+        .back-face {
+            background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+            border: 2px solid rgba(255,255,255,0.4);
+            color: white;
+        }
+
+        .back-face::after {
+            content: "?";
+            font-weight: 800;
+            font-size: clamp(1.5rem, 5vw, 2.5rem); /* ? adaptable */
+            opacity: 0.8;
+        }
+
+        .match-animation {
+            animation: pop 0.4s ease-in-out;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1) rotateY(180deg); }
+            50% { transform: scale(1.15) rotateY(180deg); }
+            100% { transform: scale(1) rotateY(180deg); }
+        }
+
+        /* --- Utilidades --- */
+        .hidden { display: none !important; }
+        
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+        }
+
+        .custom-modal {
+            background: rgba(255, 255, 255, 0.98);
+        }
+
+        .confetti {
+            position: fixed;
+            width: 12px;
+            height: 12px;
+            background-color: #f00;
+            animation: fall linear forwards;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(110vh) rotate(720deg); }
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-3">
+
+    <!-- MENÚ PRINCIPAL -->
+    <div id="main-menu" class="w-full max-w-md flex flex-col items-center justify-center fade-in text-center">
+        <div class="mb-8">
+            <span class="text-6xl animate-bounce inline-block">🧩</span>
+            <h1 class="text-5xl font-bold text-white text-shadow mt-2 drop-shadow-md">Memory<br>Emoji</h1>
+            <p class="text-white/80 mt-2 text-lg">¡Supera los 10 niveles!</p>
+        </div>
+
+        <button onclick="startGame()" class="menu-btn hover:bg-indigo-50 text-indigo-600">
+            ▶️ Jugar
+        </button>
+        
+        <button onclick="showRecordsView()" class="menu-btn hover:bg-pink-50 text-pink-600">
+            🏆 Récords
+        </button>
+    </div>
+
+    <!-- VISTA DE RÉCORDS (Independiente) -->
+    <div id="records-view" class="w-full max-w-md hidden fade-in bg-white/95 rounded-2xl p-6 shadow-2xl relative">
+        <button onclick="showMenu()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+            </svg>
+        </button>
+        <h2 class="text-3xl font-bold text-center text-indigo-700 mb-6">🏆 Salón de la Fama</h2>
+        <div id="records-list-view" class="space-y-3 mb-6">
+            <!-- Lista generada por JS -->
+        </div>
+        <button onclick="showMenu()" class="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-300 transition">
+            Volver al Menú
+        </button>
+    </div>
+
+    <!-- JUEGO (Contenedor) -->
+    <div id="game-container" class="w-full flex flex-col items-center h-full hidden fade-in">
+        
+        <!-- Encabezado del Juego -->
+        <header class="w-full max-w-2xl mb-2 text-white">
+            <div class="flex justify-between items-center mb-2 px-1">
+                <button onclick="confirmExit()" class="text-sm bg-black/20 hover:bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"/></svg>
+                    Menú
+                </button>
+                <div class="font-bold text-lg">Nivel <span id="current-level" class="text-yellow-300 text-2xl">1</span><span class="opacity-60 text-sm">/10</span></div>
+            </div>
+            
+            <div class="flex justify-between items-center bg-white/20 rounded-2xl p-2 backdrop-blur-sm shadow-lg border border-white/10">
+                <div class="flex flex-col items-center flex-1 border-r border-white/10">
+                    <span class="text-[10px] uppercase tracking-wider opacity-80">Tiempo</span>
+                    <span id="total-time" class="text-xl font-bold font-mono leading-tight">00:00</span>
+                </div>
+                
+                <button onclick="restartLevel()" class="mx-2 bg-white text-indigo-600 p-2 rounded-full shadow-lg hover:bg-indigo-50 active:scale-90 transition" title="Reiniciar Nivel">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+                </button>
+
+                <div class="flex flex-col items-center flex-1 border-l border-white/10">
+                    <span class="text-[10px] uppercase tracking-wider opacity-80">Pares</span>
+                    <span id="pairs-left" class="text-xl font-bold leading-tight">--</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tablero Grid -->
+        <div class="flex-grow w-full flex items-center justify-center relative">
+            <div id="game-board" class="grid-container">
+                <!-- Cartas JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALES -->
+
+    <!-- Modal: Confirmar Salida (NUEVO) -->
+    <div id="exit-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4">
+        <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm transform scale-100 transition-all">
+            <div class="text-5xl mb-4">🤔</div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">¿Volver al Menú?</h2>
+            <p class="text-gray-500 mb-6 text-sm">Se perderá el progreso de tu partida actual.</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="closeExitModal()" class="bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">
+                    Cancelar
+                </button>
+                <button onclick="exitToMenu()" class="bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 shadow-lg transition">
+                    Salir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nivel Completado -->
+    <div id="level-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4">
+        <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm transform scale-100 animate-bounce-in">
+            <div class="text-6xl mb-4">✨</div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-1">¡Nivel Superado!</h2>
+            <p class="text-gray-500 mb-6 text-sm">Nivel <span id="modal-level-num" class="font-bold">1</span> completado</p>
+            <button onclick="nextLevel()" class="w-full bg-indigo-600 text-white py-3 rounded-2xl font-bold text-lg hover:bg-indigo-700 shadow-lg active:scale-95 transition">
+                Siguiente Nivel ➡️
+            </button>
+        </div>
+    </div>
+
+    <!-- Victoria Final -->
+    <div id="victory-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4">
+        <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm">
+            <div class="text-6xl mb-2 animate-pulse">🏆</div>
+            <h2 class="text-3xl font-bold text-indigo-700 mb-1">¡GANASTE!</h2>
+            <p class="text-gray-500 mb-4 text-sm">Completaste los 10 niveles</p>
+
+            <div class="bg-indigo-50 p-4 rounded-xl mb-6 border border-indigo-100">
+                <p class="text-xs text-indigo-800 font-bold uppercase tracking-wide">Tiempo Total</p>
+                <p id="final-score-time" class="text-4xl font-bold text-indigo-600 font-mono">00:00</p>
+            </div>
+
+            <!-- Formulario Récord -->
+            <div id="record-form" class="hidden mb-4">
+                <p class="text-green-600 font-bold mb-2 text-sm">¡Entraste al Top 3! 🎉</p>
+                <div class="flex gap-2">
+                    <input type="text" id="player-name" placeholder="NOMBRE" maxlength="8" class="flex-1 bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 focus:border-indigo-500 outline-none uppercase font-bold text-gray-700 text-center">
+                    <button onclick="saveScore()" class="bg-green-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-600 shadow-md">OK</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="showRecordsView()" class="bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200">
+                    Ver Récords
+                </button>
+                <button onclick="showMenu()" class="bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg">
+                    Menú
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuración ---
+        // Ajustamos rows/cols para que en móvil (vertical) no sea tan alto el grid
+        const levelConfig = [
+            { level: 1,  cols: 3, rows: 2, pairs: 3 },  // 3x2
+            { level: 2,  cols: 3, rows: 4, pairs: 6 },  // 3x4 (mejor para móvil que 4x3)
+            { level: 3,  cols: 4, rows: 4, pairs: 8 },  // 4x4
+            { level: 4,  cols: 4, rows: 5, pairs: 10 }, // 4x5
+            { level: 5,  cols: 4, rows: 6, pairs: 12 }, // 4x6
+            { level: 6,  cols: 5, rows: 6, pairs: 15 }, // 5x6
+            { level: 7,  cols: 5, rows: 6, pairs: 15 }, // Repetimos estructura, más difícil por tiempo
+            { level: 8,  cols: 6, rows: 6, pairs: 18 }, // 6x6
+            { level: 9,  cols: 6, rows: 7, pairs: 21 }, // 6x7
+            { level: 10, cols: 6, rows: 8, pairs: 24 }  // 6x8 (Máximo)
+        ];
+
+        const emojiPool = [
+            '❤️', '✨', '✅', '😂', '⭐', '🌼',
+            '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
+            '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆',
+            '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋',
+            '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎',
+            '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟',
+            '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧',
+            '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄'
+        ];
+
+        // --- Estado ---
+        let currentLevelIndex = 0;
+        let cards = [];
+        let hasFlippedCard = false;
+        let lockBoard = false;
+        let firstCard, secondCard;
+        let matches = 0;
+        let totalSeconds = 0;
+        let timerInterval;
+        let gameActive = false;
+
+        // --- DOM Elements ---
+        const mainMenu = document.getElementById('main-menu');
+        const gameContainer = document.getElementById('game-container');
+        const recordsView = document.getElementById('records-view');
+        
+        const gameBoard = document.getElementById('game-board');
+        const levelDisplay = document.getElementById('current-level');
+        const timeDisplay = document.getElementById('total-time');
+        const pairsDisplay = document.getElementById('pairs-left');
+        
+        const exitModal = document.getElementById('exit-modal'); // Nuevo elemento
+        const levelModal = document.getElementById('level-modal');
+        const modalLevelNum = document.getElementById('modal-level-num');
+        const victoryModal = document.getElementById('victory-modal');
+        const finalScoreTime = document.getElementById('final-score-time');
+        const recordForm = document.getElementById('record-form');
+        const playerNameInput = document.getElementById('player-name');
+        const recordsListView = document.getElementById('records-list-view');
+
+        // --- Navegación ---
+        function startGame() {
+            mainMenu.classList.add('hidden');
+            recordsView.classList.add('hidden');
+            gameContainer.classList.remove('hidden');
+            
+            // Resetear juego completo
+            currentLevelIndex = 0;
+            totalSeconds = 0;
+            updateTimeDisplay();
+            initLevel();
+        }
+
+        function showMenu() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            
+            // Ocultar todo
+            gameContainer.classList.add('hidden');
+            recordsView.classList.add('hidden');
+            levelModal.classList.add('hidden');
+            victoryModal.classList.add('hidden');
+            exitModal.classList.add('hidden'); // Asegurar que se oculte
+            
+            // Mostrar menú
+            mainMenu.classList.remove('hidden');
+            
+            // Limpiar confeti
+            document.querySelectorAll('.confetti').forEach(c => c.remove());
+        }
+
+        // Funciones del Modal de Salida (REEMPLAZO de confirmExit anterior)
+        function confirmExit() {
+            // Pausar el juego visualmente (opcional, pero buena práctica)
+            exitModal.classList.remove('hidden');
+        }
+
+        function closeExitModal() {
+            exitModal.classList.add('hidden');
+        }
+
+        function exitToMenu() {
+            closeExitModal();
+            showMenu();
+        }
+
+        function showRecordsView() {
+            mainMenu.classList.add('hidden');
+            victoryModal.classList.add('hidden');
+            recordsView.classList.remove('hidden');
+            
+            renderRecordsList(recordsListView);
+        }
+
+        // --- Lógica del Juego ---
+        function initLevel() {
+            gameActive = true;
+            lockBoard = false;
+            hasFlippedCard = false;
+            firstCard = null;
+            secondCard = null;
+            matches = 0;
+            
+            const config = levelConfig[currentLevelIndex];
+            levelDisplay.textContent = config.level;
+            
+            // Seleccionar emojis
+            const shuffledPool = [...emojiPool].sort(() => 0.5 - Math.random());
+            const selectedEmojis = shuffledPool.slice(0, config.pairs);
+            
+            cards = [...selectedEmojis, ...selectedEmojis];
+            cards.sort(() => 0.5 - Math.random());
+
+            renderBoard(config);
+            
+            if (!timerInterval) startTimer();
+        }
+
+        function renderBoard(config) {
+            gameBoard.innerHTML = '';
+            
+            // Configuración del Grid
+            gameBoard.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
+            
+            // Cálculo del tamaño de fuente DINÁMICO para maximizar tamaño
+            // Cuantas menos columnas, más grande el emoji.
+            // Usamos un tamaño base alto para que llene la carta.
+            let fontSize = '4rem'; // Base muy grande
+            
+            if (config.cols === 3) fontSize = '4.5rem';
+            if (config.cols === 4) fontSize = '3.5rem';
+            if (config.cols === 5) fontSize = '2.8rem';
+            if (config.cols >= 6)  fontSize = '2.2rem';
+
+            cards.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.classList.add('memory-card', 'fade-in');
+                card.dataset.framework = emoji;
+                card.dataset.index = index;
+
+                // Frente
+                const frontFace = document.createElement('div');
+                frontFace.classList.add('front-face');
+                
+                // Wrapper para el emoji que permite transformaciones sin afectar layout
+                const emojiSpan = document.createElement('span');
+                emojiSpan.classList.add('emoji-content');
+                emojiSpan.textContent = emoji;
+                emojiSpan.style.fontSize = fontSize;
+                
+                frontFace.appendChild(emojiSpan);
+
+                // Dorso
+                const backFace = document.createElement('div');
+                backFace.classList.add('back-face');
+
+                card.appendChild(frontFace);
+                card.appendChild(backFace);
+                
+                card.addEventListener('click', flipCard);
+                gameBoard.appendChild(card);
+            });
+
+            updatePairsInfo(config.pairs);
+        }
+
+        function updatePairsInfo(totalPairs) {
+            pairsDisplay.textContent = `${matches}/${totalPairs}`;
+        }
+
+        function flipCard() {
+            if (lockBoard) return;
+            if (this === firstCard) return;
+            if (!gameActive) return;
+
+            this.classList.add('flip');
+
+            if (!hasFlippedCard) {
+                hasFlippedCard = true;
+                firstCard = this;
+                return;
+            }
+
+            secondCard = this;
+            checkForMatch();
+        }
+
+        function checkForMatch() {
+            let isMatch = firstCard.dataset.framework === secondCard.dataset.framework;
+            isMatch ? disableCards() : unflipCards();
+        }
+
+        function disableCards() {
+            lockBoard = true;
+            setTimeout(() => {
+                // Animación de éxito
+                firstCard.querySelector('.front-face').classList.add('match-animation');
+                secondCard.querySelector('.front-face').classList.add('match-animation');
+                
+                // Deshabilitar clicks
+                firstCard.removeEventListener('click', flipCard);
+                secondCard.removeEventListener('click', flipCard);
+                
+                resetBoardState();
+                matches++;
+                updatePairsInfo(levelConfig[currentLevelIndex].pairs);
+                
+                if (matches === levelConfig[currentLevelIndex].pairs) {
+                    handleLevelComplete();
+                }
+            }, 300);
+        }
+
+        function unflipCards() {
+            lockBoard = true;
+            setTimeout(() => {
+                firstCard.classList.remove('flip');
+                secondCard.classList.remove('flip');
+                resetBoardState();
+            }, 800); // Un poco más rápido para mantener ritmo
+        }
+
+        function resetBoardState() {
+            [hasFlippedCard, lockBoard] = [false, false];
+            [firstCard, secondCard] = [null, null];
+        }
+
+        function restartLevel() {
+            // Reinicia solo el nivel actual, no el tiempo total
+            initLevel();
+        }
+
+        // --- Gestión de Niveles ---
+        function handleLevelComplete() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            gameActive = false;
+
+            if (currentLevelIndex + 1 < levelConfig.length) {
+                setTimeout(() => {
+                    modalLevelNum.textContent = levelConfig[currentLevelIndex].level;
+                    levelModal.classList.remove('hidden');
+                    createConfetti(20);
+                }, 500);
+            } else {
+                setTimeout(handleGameVictory, 500);
+            }
+        }
+
+        function nextLevel() {
+            levelModal.classList.add('hidden');
+            currentLevelIndex++;
+            initLevel();
+        }
+
+        // --- Timer ---
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                totalSeconds++;
+                updateTimeDisplay();
+            }, 1000);
+        }
+
+        function updateTimeDisplay() {
+            const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const secs = (totalSeconds % 60).toString().padStart(2, '0');
+            timeDisplay.textContent = `${mins}:${secs}`;
+        }
+
+        // --- Récords ---
+        function getHighScores() {
+            const stored = localStorage.getItem('emojiMemoryScores');
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function handleGameVictory() {
+            finalScoreTime.textContent = timeDisplay.textContent;
+            createConfetti(100);
+            
+            const highScores = getHighScores();
+            // Comprobar si entra en top 3
+            if (highScores.length < 3 || totalSeconds < highScores[highScores.length - 1].time) {
+                recordForm.classList.remove('hidden');
+                playerNameInput.value = '';
+            } else {
+                recordForm.classList.add('hidden');
+            }
+
+            victoryModal.classList.remove('hidden');
+        }
+
+        function saveScore() {
+            const name = playerNameInput.value.trim() || 'JUGADOR';
+            const newScore = { name: name.toUpperCase(), time: totalSeconds, date: new Date().toLocaleDateString() };
+            
+            let highScores = getHighScores();
+            highScores.push(newScore);
+            highScores.sort((a, b) => a.time - b.time);
+            highScores = highScores.slice(0, 3);
+            
+            localStorage.setItem('emojiMemoryScores', JSON.stringify(highScores));
+            
+            recordForm.classList.add('hidden');
+            showRecordsView(); // Ir a la vista de récords
+        }
+
+        function renderRecordsList(container) {
+            const highScores = getHighScores();
+            container.innerHTML = '';
+
+            if (highScores.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                        <p class="text-gray-400">Aún no hay campeones.</p>
+                        <p class="text-sm text-indigo-400 mt-1 font-bold">¡Sé el primero!</p>
+                    </div>`;
+                return;
+            }
+
+            highScores.forEach((score, index) => {
+                const mins = Math.floor(score.time / 60).toString().padStart(2, '0');
+                const secs = (score.time % 60).toString().padStart(2, '0');
+                const medals = ['🥇', '🥈', '🥉'];
+                const bgColors = ['bg-yellow-50 border-yellow-200', 'bg-gray-50 border-gray-200', 'bg-orange-50 border-orange-200'];
+                
+                const div = document.createElement('div');
+                div.className = `flex justify-between items-center p-4 rounded-xl border ${bgColors[index]} shadow-sm`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <span class="text-3xl filter drop-shadow-sm">${medals[index]}</span>
+                        <div class="flex flex-col">
+                            <span class="font-bold text-gray-800 text-lg leading-none">${score.name}</span>
+                            <span class="text-[10px] text-gray-400 uppercase tracking-wide">${score.date}</span>
+                        </div>
+                    </div>
+                    <span class="font-mono font-bold text-xl text-indigo-600 bg-white px-2 py-1 rounded shadow-sm">${mins}:${secs}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // --- FX ---
+        function createConfetti(amount) {
+            const colors = ['#f43f5e', '#10b981', '#3b82f6', '#f59e0b'];
+            for (let i = 0; i < amount; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDuration = Math.random() * 2 + 2 + 's';
+                confetti.style.opacity = Math.random();
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 4000);
+            }
+        }
+
+    </script>
+</body>
+</html>
