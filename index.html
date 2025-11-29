@@ -1,684 +1,226 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- Configuración básica de caracteres y compatibilidad -->
     <meta charset="UTF-8">
+    <!-- Viewport para asegurar que el diseño sea responsive en móviles -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Juego de Memoria Emoji</title>
+    
+    <!-- Importar Tailwind CSS (Framework de estilos utilitarios) -->
+    <!-- Nota: Para producción, se recomienda descargar o compilar Tailwind, pero el CDN funciona para pruebas -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
-
-        body {
-            font-family: 'Fredoka', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            overflow-x: hidden;
-            /* CAMBIO: justify-start para que empiece arriba, no en el centro vertical */
-            padding-top: 2rem; 
-        }
-
-        /* Efecto de desenfoque para el fondo cuando hay un modal activo */
-        body.modal-active > *:not(.modal-overlay) {
-            filter: blur(5px);
-            transition: filter 0.3s ease;
-        }
-
-        /* --- Menú Principal --- */
-        .menu-btn {
-            background: white;
-            color: #4f46e5;
-            font-weight: 800;
-            padding: 1rem 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.1s, box-shadow 0.1s;
-            width: 100%;
-            max-width: 250px;
-            margin-bottom: 1rem;
-            text-align: center;
-            font-size: 1.25rem;
-        }
-
-        .menu-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        /* --- Tablero de Juego --- */
-        .grid-container {
-            display: grid;
-            gap: 0.35rem;
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            /* Ajuste para móviles: max-height para evitar scroll en pantallas pequeñas */
-            max-height: calc(100vh - 160px); 
-            aspect-ratio: 4/5; /* Ayuda a mantener proporciones en el contenedor */
-        }
-
-        .memory-card {
-            width: 100%;
-            height: 100%; /* Ocupar todo el espacio de la celda del grid */
-            position: relative;
-            transform-style: preserve-3d;
-            transition: transform 0.4s;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .memory-card.flip {
-            transform: rotateY(180deg);
-        }
-
-        .front-face,
-        .back-face {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            border-radius: 12%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            backface-visibility: hidden;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-            user-select: none;
-        }
-
-        .front-face {
-            background: white;
-            transform: rotateY(180deg);
-            border: 2px solid #fff;
-            overflow: hidden;
-        }
-        
-        .emoji-content {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
-            transform: scale(1.4); /* Emojis grandes */
-            line-height: 0;
-        }
-
-        .back-face {
-            background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
-            border: 2px solid rgba(255,255,255,0.4);
-            color: white;
-        }
-
-        .back-face::after {
-            content: "?";
-            font-weight: 800;
-            font-size: clamp(1.5rem, 5vw, 2.5rem);
-            opacity: 0.8;
-        }
-
-        .match-animation {
-            animation: pop 0.4s ease-in-out;
-        }
-
-        @keyframes pop {
-            0% { transform: scale(1) rotateY(180deg); }
-            50% { transform: scale(1.15) rotateY(180deg); }
-            100% { transform: scale(1) rotateY(180deg); }
-        }
-
-        /* --- Modales --- */
-        .hidden { display: none !important; }
-        
-        .modal-overlay {
-            background: rgba(0, 0, 0, 0.6); /* Fondo semi-transparente oscuro */
-            backdrop-filter: blur(8px); /* Blur fuerte para el fondo */
-        }
-
-        .custom-modal {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(255,255,255,0.5);
-        }
-
-        .confetti {
-            position: fixed;
-            width: 12px;
-            height: 12px;
-            background-color: #f00;
-            animation: fall linear forwards;
-            z-index: 100;
-            pointer-events: none;
-        }
-
-        @keyframes fall {
-            to { transform: translateY(110vh) rotate(720deg); }
-        }
-
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+    
+    <!-- CONEXIÓN AL CSS: Aquí se enlaza tu archivo de estilos separado -->
+    <link rel="stylesheet" href="index.css">
 </head>
 <body class="flex flex-col items-center justify-start min-h-screen px-3 pb-4">
 
-    <!-- MENÚ PRINCIPAL -->
+    <!-- ================= MENÚ PRINCIPAL ================= -->
+    <!-- Contenedor inicial que se muestra al cargar la página -->
     <div id="main-menu" class="w-full max-w-md flex flex-col items-center justify-center fade-in text-center mt-10">
         <div class="mb-12">
+            <!-- Icono grande del logo -->
             <span class="text-7xl animate-bounce inline-block filter drop-shadow-lg">🧩</span>
+            <!-- Título principal con sombra -->
             <h1 class="text-6xl font-bold text-white text-shadow mt-4 drop-shadow-md tracking-tight">Memoria<br>Emoji</h1>
             <p class="text-white/90 mt-3 text-xl font-medium">¡Supera los 10 niveles!</p>
+            <!-- Indicador de estado de conexión (Offline/Online) -->
+            <p id="connection-status" class="text-white/60 text-xs mt-2 font-mono bg-black/20 px-2 py-1 rounded inline-block">Comprobando conexión...</p>
         </div>
 
-        <button onclick="startGame()" class="menu-btn hover:bg-indigo-50 text-indigo-600 transform transition hover:-translate-y-1">
+        <!-- Botón para iniciar el flujo de juego (abre selección de modo) -->
+        <!-- Llama a window.gameApp definido en funcionalidad.js -->
+        <button onclick="window.gameApp.openModeSelection()" class="menu-btn hover:bg-indigo-50 text-indigo-600 transform transition hover:-translate-y-1">
             ▶️ Jugar
         </button>
         
-        <button onclick="openRecordsModal()" class="menu-btn hover:bg-pink-50 text-pink-600 transform transition hover:-translate-y-1">
-            🏆 Récords
+        <!-- Botón para ver la tabla de récords -->
+        <button onclick="window.gameApp.openRecordsModal()" class="menu-btn hover:bg-pink-50 text-pink-600 transform transition hover:-translate-y-1">
+            🏆 Récords Globales
         </button>
     </div>
 
-    <!-- JUEGO (Contenedor) -->
+    <!-- ================= CONTENEDOR DEL JUEGO ================= -->
+    <!-- Este contenedor está oculto inicialmente (.hidden) y contiene el tablero y el HUD -->
     <div id="game-container" class="w-full flex flex-col items-center h-full hidden fade-in max-w-2xl">
         
-        <!-- Encabezado del Juego -->
+        <!-- Encabezado del Juego (HUD - Head Up Display) -->
         <header class="w-full mb-4 text-white">
+            <!-- Barra superior con botón de menú y nivel actual -->
             <div class="flex justify-between items-center mb-3 px-1">
-                <button onclick="confirmExit()" class="text-sm font-bold bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full backdrop-blur-sm transition flex items-center gap-2 shadow-sm">
+                <button onclick="window.gameApp.confirmExit()" class="text-sm font-bold bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full backdrop-blur-sm transition flex items-center gap-2 shadow-sm">
+                    <!-- Icono SVG de flecha atrás -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"/></svg>
                     Menú
                 </button>
                 <div class="font-bold text-xl drop-shadow-md">Nivel <span id="current-level" class="text-yellow-300 text-3xl ml-1">1</span><span class="opacity-70 text-base">/10</span></div>
             </div>
             
+            <!-- Panel de Estadísticas (Tiempo/Puntos) -->
             <div class="flex justify-between items-center bg-white/20 rounded-2xl p-3 backdrop-blur-sm shadow-xl border border-white/20">
-                <div class="flex flex-col items-center flex-1 border-r border-white/20">
-                    <span class="text-[10px] uppercase tracking-wider opacity-90 font-bold">Tiempo</span>
-                    <span id="total-time" class="text-2xl font-bold font-mono leading-tight drop-shadow-sm">00:00</span>
+                <!-- Estadística Izquierda (Tiempo en Solo, J1 en Versus) -->
+                <div class="flex flex-col items-center flex-1 border-r border-white/20 transition-colors duration-300 rounded-l-xl">
+                    <span id="left-stat-label" class="text-[10px] uppercase tracking-wider opacity-90 font-bold truncate w-full text-center px-1">Tiempo</span>
+                    <span id="left-stat-value" class="text-2xl font-bold font-mono leading-tight drop-shadow-sm">00:00</span>
                 </div>
                 
-                <button onclick="restartLevel()" class="mx-3 bg-white text-indigo-600 p-3 rounded-full shadow-lg hover:bg-indigo-50 active:scale-90 transition transform hover:rotate-180 duration-500" title="Reiniciar Nivel">
+                <!-- Botón Central de Reinicio Rápido -->
+                <button onclick="window.gameApp.restartLevel()" class="mx-3 bg-white text-indigo-600 p-3 rounded-full shadow-lg hover:bg-indigo-50 active:scale-90 transition transform hover:rotate-180 duration-500" title="Reiniciar Nivel">
                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
                 </button>
 
-                <div class="flex flex-col items-center flex-1 border-l border-white/20">
-                    <span class="text-[10px] uppercase tracking-wider opacity-90 font-bold">Pares</span>
-                    <span id="pairs-left" class="text-2xl font-bold leading-tight drop-shadow-sm">--</span>
+                <!-- Estadística Derecha (Pares en Solo, J2 en Versus) -->
+                <div class="flex flex-col items-center flex-1 border-l border-white/20 transition-colors duration-300 rounded-r-xl">
+                    <span id="right-stat-label" class="text-[10px] uppercase tracking-wider opacity-90 font-bold truncate w-full text-center px-1">Pares</span>
+                    <span id="right-stat-value" class="text-2xl font-bold leading-tight drop-shadow-sm">--</span>
                 </div>
             </div>
         </header>
 
-        <!-- Tablero Grid -->
+        <!-- Área del Tablero: Aquí se inyectan las cartas vía JS -->
         <div class="flex-grow w-full flex items-start justify-center relative">
-            <div id="game-board" class="grid-container">
-                <!-- Cartas JS -->
-            </div>
+            <div id="game-board" class="grid-container"></div>
         </div>
     </div>
 
-    <!-- MODAL: RÉCORDS (Salón de la Fama) - AHORA ES UN MODAL -->
+    <!-- ================= MODALES (Ventanas Emergentes) ================= -->
+
+    <!-- Modal: Selección de Modo (Solo vs 1v1) -->
+    <div id="mode-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4 fade-in">
+        <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm">
+            <div class="text-5xl mb-4">🎮</div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Elige el modo</h2>
+            <div class="space-y-3">
+                <button onclick="window.gameApp.startGameSolo()" class="w-full bg-blue-500 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-600 shadow-md transition transform hover:scale-105">
+                    👤 Solo
+                    <span class="block text-xs opacity-80 font-normal">Contrareloj y Récords</span>
+                </button>
+                <button onclick="window.gameApp.openNamesModal()" class="w-full bg-purple-500 text-white py-4 rounded-xl font-bold text-lg hover:bg-purple-600 shadow-md transition transform hover:scale-105">
+                    ⚔️ 1 vs 1
+                    <span class="block text-xs opacity-80 font-normal">Multijugador por turnos</span>
+                </button>
+            </div>
+            <button onclick="window.gameApp.closeModeSelection()" class="mt-4 text-gray-500 text-sm hover:text-gray-700 underline">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Modal: Ingreso de Nombres para 1 vs 1 -->
+    <div id="names-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4 fade-in">
+        <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4">Jugadores</h2>
+            <div class="space-y-4 text-left">
+                <!-- Input Jugador 1 (Rojo) -->
+                <div>
+                    <label class="text-xs font-bold text-red-500 uppercase ml-1">Jugador 1</label>
+                    <input type="text" id="p1-input" placeholder="Nombre J1" class="w-full border-2 border-red-100 rounded-lg px-3 py-2 font-bold text-gray-700 focus:border-red-500 outline-none" maxlength="14">
+                </div>
+                <!-- Input Jugador 2 (Verde) -->
+                <div>
+                    <label class="text-xs font-bold text-green-500 uppercase ml-1">Jugador 2</label>
+                    <input type="text" id="p2-input" placeholder="Nombre J2" class="w-full border-2 border-green-100 rounded-lg px-3 py-2 font-bold text-gray-700 focus:border-green-500 outline-none" maxlength="14">
+                </div>
+            </div>
+            <button onclick="window.gameApp.startVersusGame()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold mt-6 hover:bg-indigo-700 shadow-lg">¡Comenzar Batalla!</button>
+        </div>
+    </div>
+
+    <!-- Modal: Aviso de Cambio de Turno -->
+    <div id="turn-modal" class="fixed inset-0 flex items-center justify-center z-[70] hidden modal-overlay p-4">
+        <div class="custom-modal p-8 rounded-3xl shadow-2xl text-center transform scale-100 animate-bounce-in border-4 border-indigo-500 w-full max-w-md mx-4">
+            <p class="text-gray-500 uppercase text-xs font-bold mb-2">Turno de</p>
+            <h2 id="turn-player-name" class="text-4xl font-bold mb-4 break-words leading-tight">Jugador 1</h2>
+            <div class="text-6xl animate-pulse">👇</div>
+        </div>
+    </div>
+
+    <!-- Modal: Lista de Récords -->
     <div id="records-modal" class="fixed inset-0 flex items-center justify-center z-[60] hidden modal-overlay p-4 fade-in">
-        <div class="custom-modal p-6 rounded-3xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[80vh]">
-            <button onclick="closeRecordsModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
-                </svg>
+        <div class="custom-modal p-6 rounded-3xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[85vh] gap-4">
+            <button onclick="window.gameApp.closeRecordsModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
             </button>
-            
-            <div class="text-center mb-6">
+            <div class="text-center mt-2">
                 <span class="text-5xl mb-2 block">🏆</span>
-                <h2 class="text-3xl font-bold text-indigo-700">Salón de la Fama</h2>
-                <p class="text-gray-400 text-sm">Top 3 Jugadores</p>
+                <h2 id="records-title" class="text-3xl font-bold text-indigo-700">Récords</h2>
+                <p id="records-subtitle" class="text-gray-400 text-sm">Top 5</p>
             </div>
-            
-            <div id="records-list-view" class="space-y-3 mb-6 overflow-y-auto flex-1 px-1">
-                <!-- Lista generada por JS -->
+            <!-- Lista generada dinámicamente -->
+            <div id="records-list-view" class="space-y-3 overflow-y-auto flex-1 px-1 min-h-0">
+                <div class="flex justify-center items-center h-full text-gray-400 py-8">Cargando récords...</div>
             </div>
-            
-            <button onclick="closeRecordsModal()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg mt-auto">
-                Cerrar
-            </button>
+            <button onclick="window.gameApp.closeRecordsModal()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shrink-0">Cerrar</button>
         </div>
     </div>
 
-    <!-- Modal: Confirmar Salida -->
+    <!-- Modal: Confirmación de Salida -->
     <div id="exit-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4 fade-in">
         <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm transform scale-100 transition-all">
             <div class="text-5xl mb-4">🤔</div>
             <h2 class="text-2xl font-bold text-gray-800 mb-2">¿Volver al Menú?</h2>
-            <p class="text-gray-500 mb-6 text-sm px-4">Si sales ahora, se perderá todo tu progreso actual.</p>
+            <p class="text-gray-500 mb-6 text-sm px-4">Si sales ahora, se perderá todo tu progreso.</p>
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="closeExitModal()" class="bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">
-                    Cancelar
-                </button>
-                <button onclick="exitToMenu()" class="bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 shadow-lg transition">
-                    Salir
-                </button>
+                <button onclick="window.gameApp.closeExitModal()" class="bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">Cancelar</button>
+                <button onclick="window.gameApp.exitToMenu()" class="bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 shadow-lg transition">Salir</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Nivel Completado -->
+    <!-- Modal: Nivel Superado -->
     <div id="level-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4">
         <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm transform scale-100 animate-bounce-in">
             <div class="text-6xl mb-4">✨</div>
             <h2 class="text-2xl font-bold text-gray-800 mb-1">¡Nivel Superado!</h2>
-            <p class="text-gray-500 mb-6 text-sm">Nivel <span id="modal-level-num" class="font-bold text-indigo-600 text-lg">1</span> completado</p>
-            <button onclick="nextLevel()" class="w-full bg-indigo-600 text-white py-3 rounded-2xl font-bold text-lg hover:bg-indigo-700 shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+            <p class="text-gray-500 mb-2 text-sm">Nivel <span id="modal-level-num" class="font-bold text-indigo-600 text-lg">1</span> completado</p>
+            
+            <!-- Sección de ganador del nivel (Solo visible en 1vs1) -->
+            <div id="level-summary-vs" class="hidden bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
+                <p class="text-xs text-gray-500 uppercase font-bold mb-1">Ganador del Nivel</p>
+                <p id="level-winner-name" class="text-xl font-bold text-green-600">Jugador 1</p>
+                <p class="text-xs text-gray-400 mt-1">(Más puntos o pares)</p>
+            </div>
+
+            <button onclick="window.gameApp.nextLevel()" class="w-full bg-indigo-600 text-white py-3 rounded-2xl font-bold text-lg hover:bg-indigo-700 shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
                 Siguiente Nivel <span class="text-2xl">➡️</span>
             </button>
         </div>
     </div>
 
-    <!-- Modal: Victoria Final -->
+    <!-- Modal: Victoria Final (Fin del Juego) -->
     <div id="victory-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4">
         <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm">
             <div class="text-6xl mb-2 animate-pulse">🏆</div>
-            <h2 class="text-3xl font-bold text-indigo-700 mb-1">¡GANASTE!</h2>
-            <p class="text-gray-500 mb-4 text-sm">Has completado los 10 niveles.</p>
+            <h2 id="victory-title" class="text-3xl font-bold text-indigo-700 mb-1">¡GANASTE!</h2>
+            <p id="victory-subtitle" class="text-gray-500 mb-4 text-sm">Has completado los 10 niveles.</p>
 
+            <!-- Estadísticas finales -->
             <div class="bg-indigo-50 p-4 rounded-xl mb-6 border border-indigo-100">
-                <p class="text-xs text-indigo-800 font-bold uppercase tracking-wide">Tiempo Total</p>
-                <p id="final-score-time" class="text-4xl font-bold text-indigo-600 font-mono">00:00</p>
+                <p id="final-stat-label" class="text-xs text-indigo-800 font-bold uppercase tracking-wide">Tiempo Total</p>
+                <p id="final-stat-value" class="text-4xl font-bold text-indigo-600 font-mono break-words">00:00</p>
             </div>
 
-            <!-- Formulario Récord -->
+            <!-- Formulario de Récord (Solo para modo Solitario) -->
             <div id="record-form" class="hidden mb-4">
                 <div class="bg-green-50 p-3 rounded-lg border border-green-200 mb-3 animate-pulse">
-                    <p class="text-green-700 font-bold text-sm">¡NUEVO RÉCORD TOP 3! 🎉</p>
+                    <p id="record-type-label" class="text-green-700 font-bold text-sm">¡TOP SCORE! 🎉</p>
                 </div>
                 <div class="flex gap-2">
                     <input type="text" id="player-name" placeholder="TU NOMBRE" maxlength="8" class="flex-1 bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-indigo-500 outline-none uppercase font-bold text-gray-700 text-center shadow-inner">
-                    <button onclick="saveScore()" class="bg-green-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-600 shadow-md">OK</button>
+                    <button onclick="window.gameApp.saveScore()" class="bg-green-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-600 shadow-md">Guardar</button>
                 </div>
             </div>
+            
+            <p id="no-record-msg" class="hidden text-sm text-gray-400 mb-4">¡Buen juego! Sigue intentando para entrar al ranking.</p>
 
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="openRecordsModal()" class="bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">
-                    Ver Récords
-                </button>
-                <button onclick="showMenu()" class="bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg transition">
-                    Ir al Menú
-                </button>
+                <button id="btn-view-records" onclick="window.gameApp.openRecordsModal()" class="bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">Récords</button>
+                <button onclick="window.gameApp.showMenu()" class="col-span-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg transition w-full">Menú</button>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- Configuración ---
-        const levelConfig = [
-            { level: 1,  cols: 3, rows: 2, pairs: 3 },  // 3x2
-            { level: 2,  cols: 3, rows: 4, pairs: 6 },  // 3x4
-            { level: 3,  cols: 4, rows: 4, pairs: 8 },  // 4x4
-            { level: 4,  cols: 4, rows: 5, pairs: 10 }, // 4x5
-            { level: 5,  cols: 4, rows: 6, pairs: 12 }, // 4x6
-            { level: 6,  cols: 5, rows: 6, pairs: 15 }, // 5x6
-            { level: 7,  cols: 5, rows: 6, pairs: 15 }, // Repetición
-            { level: 8,  cols: 6, rows: 6, pairs: 18 }, // 6x6
-            { level: 9,  cols: 6, rows: 7, pairs: 21 }, // 6x7
-            { level: 10, cols: 6, rows: 8, pairs: 24 }  // 6x8
-        ];
-
-        const emojiPool = [
-            '❤️', '✨', '✅', '😂', '⭐', '🌼',
-            '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
-            '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆',
-            '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋',
-            '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎',
-            '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟',
-            '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧',
-            '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄'
-        ];
-
-        // --- Estado ---
-        let currentLevelIndex = 0;
-        let cards = [];
-        let hasFlippedCard = false;
-        let lockBoard = false;
-        let firstCard, secondCard;
-        let matches = 0;
-        let totalSeconds = 0;
-        let timerInterval;
-        let gameActive = false;
-
-        // --- DOM Elements ---
-        const body = document.body;
-        const mainMenu = document.getElementById('main-menu');
-        const gameContainer = document.getElementById('game-container');
-        
-        // Modales
-        const recordsModal = document.getElementById('records-modal');
-        const exitModal = document.getElementById('exit-modal');
-        const levelModal = document.getElementById('level-modal');
-        const victoryModal = document.getElementById('victory-modal');
-        
-        // Elementos internos
-        const gameBoard = document.getElementById('game-board');
-        const levelDisplay = document.getElementById('current-level');
-        const timeDisplay = document.getElementById('total-time');
-        const pairsDisplay = document.getElementById('pairs-left');
-        const modalLevelNum = document.getElementById('modal-level-num');
-        const finalScoreTime = document.getElementById('final-score-time');
-        const recordForm = document.getElementById('record-form');
-        const playerNameInput = document.getElementById('player-name');
-        const recordsListView = document.getElementById('records-list-view');
-
-        // --- Navegación ---
-        function startGame() {
-            mainMenu.classList.add('hidden');
-            gameContainer.classList.remove('hidden');
-            
-            currentLevelIndex = 0;
-            totalSeconds = 0;
-            updateTimeDisplay();
-            initLevel();
-        }
-
-        function showMenu() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            
-            gameContainer.classList.add('hidden');
-            
-            // Cerrar todos los modales
-            levelModal.classList.add('hidden');
-            victoryModal.classList.add('hidden');
-            exitModal.classList.add('hidden');
-            recordsModal.classList.add('hidden');
-            
-            mainMenu.classList.remove('hidden');
-            
-            // Quitar efecto blur del body
-            body.classList.remove('modal-active');
-            
-            // Limpiar confeti
-            document.querySelectorAll('.confetti').forEach(c => c.remove());
-        }
-
-        // --- Gestión de Modales ---
-        function openRecordsModal() {
-            renderRecordsList(recordsListView);
-            recordsModal.classList.remove('hidden');
-            body.classList.add('modal-active');
-        }
-
-        function closeRecordsModal() {
-            recordsModal.classList.add('hidden');
-            // Solo quitamos el blur si no hay otro modal importante abierto (ej: victoria)
-            if (victoryModal.classList.contains('hidden')) {
-                body.classList.remove('modal-active');
-            }
-        }
-
-        function confirmExit() {
-            exitModal.classList.remove('hidden');
-            body.classList.add('modal-active');
-        }
-
-        function closeExitModal() {
-            exitModal.classList.add('hidden');
-            body.classList.remove('modal-active');
-        }
-
-        function exitToMenu() {
-            closeExitModal();
-            showMenu();
-        }
-
-        // --- Lógica del Juego ---
-        function initLevel() {
-            gameActive = true;
-            lockBoard = false;
-            hasFlippedCard = false;
-            firstCard = null;
-            secondCard = null;
-            matches = 0;
-            
-            const config = levelConfig[currentLevelIndex];
-            levelDisplay.textContent = config.level;
-            
-            // Seleccionar emojis
-            const shuffledPool = [...emojiPool].sort(() => 0.5 - Math.random());
-            const selectedEmojis = shuffledPool.slice(0, config.pairs);
-            
-            cards = [...selectedEmojis, ...selectedEmojis];
-            cards.sort(() => 0.5 - Math.random());
-
-            renderBoard(config);
-            
-            if (!timerInterval) startTimer();
-        }
-
-        function renderBoard(config) {
-            gameBoard.innerHTML = '';
-            
-            gameBoard.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
-            
-            // Ajustar fuente según tamaño del grid
-            let fontSize = '4rem';
-            if (config.cols === 3) fontSize = '4.5rem';
-            if (config.cols === 4) fontSize = '3.5rem';
-            if (config.cols === 5) fontSize = '2.8rem';
-            if (config.cols >= 6)  fontSize = '2.2rem';
-
-            cards.forEach((emoji, index) => {
-                const card = document.createElement('div');
-                card.classList.add('memory-card', 'fade-in');
-                card.dataset.framework = emoji;
-                card.dataset.index = index;
-
-                const frontFace = document.createElement('div');
-                frontFace.classList.add('front-face');
-                
-                const emojiSpan = document.createElement('span');
-                emojiSpan.classList.add('emoji-content');
-                emojiSpan.textContent = emoji;
-                emojiSpan.style.fontSize = fontSize;
-                
-                frontFace.appendChild(emojiSpan);
-
-                const backFace = document.createElement('div');
-                backFace.classList.add('back-face');
-
-                card.appendChild(frontFace);
-                card.appendChild(backFace);
-                
-                card.addEventListener('click', flipCard);
-                gameBoard.appendChild(card);
-            });
-
-            updatePairsInfo(config.pairs);
-        }
-
-        function updatePairsInfo(totalPairs) {
-            pairsDisplay.textContent = `${matches}/${totalPairs}`;
-        }
-
-        function flipCard() {
-            if (lockBoard) return;
-            if (this === firstCard) return;
-            if (!gameActive) return;
-
-            this.classList.add('flip');
-
-            if (!hasFlippedCard) {
-                hasFlippedCard = true;
-                firstCard = this;
-                return;
-            }
-
-            secondCard = this;
-            checkForMatch();
-        }
-
-        function checkForMatch() {
-            let isMatch = firstCard.dataset.framework === secondCard.dataset.framework;
-            isMatch ? disableCards() : unflipCards();
-        }
-
-        function disableCards() {
-            lockBoard = true;
-            setTimeout(() => {
-                firstCard.querySelector('.front-face').classList.add('match-animation');
-                secondCard.querySelector('.front-face').classList.add('match-animation');
-                
-                firstCard.removeEventListener('click', flipCard);
-                secondCard.removeEventListener('click', flipCard);
-                
-                resetBoardState();
-                matches++;
-                updatePairsInfo(levelConfig[currentLevelIndex].pairs);
-                
-                if (matches === levelConfig[currentLevelIndex].pairs) {
-                    handleLevelComplete();
-                }
-            }, 300);
-        }
-
-        function unflipCards() {
-            lockBoard = true;
-            setTimeout(() => {
-                firstCard.classList.remove('flip');
-                secondCard.classList.remove('flip');
-                resetBoardState();
-            }, 800);
-        }
-
-        function resetBoardState() {
-            [hasFlippedCard, lockBoard] = [false, false];
-            [firstCard, secondCard] = [null, null];
-        }
-
-        function restartLevel() {
-            initLevel();
-        }
-
-        // --- Gestión de Niveles ---
-        function handleLevelComplete() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            gameActive = false;
-
-            if (currentLevelIndex + 1 < levelConfig.length) {
-                setTimeout(() => {
-                    modalLevelNum.textContent = levelConfig[currentLevelIndex].level;
-                    levelModal.classList.remove('hidden');
-                    body.classList.add('modal-active'); // Blur fondo
-                    createConfetti(20);
-                }, 500);
-            } else {
-                setTimeout(handleGameVictory, 500);
-            }
-        }
-
-        function nextLevel() {
-            levelModal.classList.add('hidden');
-            body.classList.remove('modal-active'); // Quitar blur
-            currentLevelIndex++;
-            initLevel();
-        }
-
-        // --- Timer ---
-        function startTimer() {
-            timerInterval = setInterval(() => {
-                totalSeconds++;
-                updateTimeDisplay();
-            }, 1000);
-        }
-
-        function updateTimeDisplay() {
-            const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-            const secs = (totalSeconds % 60).toString().padStart(2, '0');
-            timeDisplay.textContent = `${mins}:${secs}`;
-        }
-
-        // --- Récords ---
-        function getHighScores() {
-            const stored = localStorage.getItem('emojiMemoryScores');
-            return stored ? JSON.parse(stored) : [];
-        }
-
-        function handleGameVictory() {
-            finalScoreTime.textContent = timeDisplay.textContent;
-            createConfetti(100);
-            
-            const highScores = getHighScores();
-            
-            // Check top 3
-            if (highScores.length < 3 || totalSeconds < highScores[highScores.length - 1].time) {
-                recordForm.classList.remove('hidden');
-                playerNameInput.value = '';
-            } else {
-                recordForm.classList.add('hidden');
-            }
-
-            victoryModal.classList.remove('hidden');
-            body.classList.add('modal-active');
-        }
-
-        function saveScore() {
-            const name = playerNameInput.value.trim() || 'JUGADOR';
-            const newScore = { name: name.toUpperCase(), time: totalSeconds, date: new Date().toLocaleDateString() };
-            
-            let highScores = getHighScores();
-            highScores.push(newScore);
-            highScores.sort((a, b) => a.time - b.time);
-            highScores = highScores.slice(0, 3);
-            
-            localStorage.setItem('emojiMemoryScores', JSON.stringify(highScores));
-            
-            recordForm.classList.add('hidden');
-            // Mostrar récords directamente
-            victoryModal.classList.add('hidden'); // Ocultar victoria
-            openRecordsModal(); // Abrir récords
-        }
-
-        function renderRecordsList(container) {
-            const highScores = getHighScores();
-            container.innerHTML = '';
-
-            if (highScores.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                        <p class="text-gray-400">Aún no hay campeones.</p>
-                        <p class="text-sm text-indigo-400 mt-1 font-bold">¡Sé el primero!</p>
-                    </div>`;
-                return;
-            }
-
-            highScores.forEach((score, index) => {
-                const mins = Math.floor(score.time / 60).toString().padStart(2, '0');
-                const secs = (score.time % 60).toString().padStart(2, '0');
-                const medals = ['🥇', '🥈', '🥉'];
-                const bgColors = ['bg-yellow-50 border-yellow-200', 'bg-gray-50 border-gray-200', 'bg-orange-50 border-orange-200'];
-                
-                const div = document.createElement('div');
-                div.className = `flex justify-between items-center p-4 rounded-xl border ${bgColors[index]} shadow-sm`;
-                div.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <span class="text-3xl filter drop-shadow-sm">${medals[index]}</span>
-                        <div class="flex flex-col text-left">
-                            <span class="font-bold text-gray-800 text-lg leading-none">${score.name}</span>
-                            <span class="text-[10px] text-gray-400 uppercase tracking-wide mt-1">${score.date}</span>
-                        </div>
-                    </div>
-                    <span class="font-mono font-bold text-xl text-indigo-600 bg-white/80 px-2 py-1 rounded shadow-sm">${mins}:${secs}</span>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        // --- FX ---
-        function createConfetti(amount) {
-            const colors = ['#f43f5e', '#10b981', '#3b82f6', '#f59e0b'];
-            for (let i = 0; i < amount; i++) {
-                const confetti = document.createElement('div');
-                confetti.classList.add('confetti');
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDuration = Math.random() * 2 + 2 + 's';
-                confetti.style.opacity = Math.random();
-                document.body.appendChild(confetti);
-                setTimeout(() => confetti.remove(), 4000);
-            }
-        }
-
-    </script>
+    <!-- CONEXIÓN AL JS: Aquí se carga toda la lógica del juego -->
+    <!-- El atributo 'type="module"' es importante para usar 'import' dentro de funcionalidad.js -->
+    <script src="funcionalidad.js" type="module"></script>
 </body>
 </html>

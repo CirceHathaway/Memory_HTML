@@ -1,0 +1,153 @@
+/* --- Importación de Fuentes --- */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
+
+/* --- Estilos Generales --- */
+body {
+    font-family: 'Fredoka', sans-serif; /* Fuente amigable */
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Fondo degradado */
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-top: 2rem;
+}
+
+/* Efecto blur en el fondo cuando un modal está activo */
+body.modal-active > *:not(.modal-overlay) {
+    filter: blur(5px);
+    transition: filter 0.3s ease;
+}
+
+/* --- Botones del Menú Principal --- */
+.menu-btn {
+    background: white;
+    color: #4f46e5;
+    font-weight: 800;
+    padding: 1rem 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.1s, box-shadow 0.1s;
+    width: 100%;
+    max-width: 250px;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-size: 1.25rem;
+}
+
+.menu-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* --- Tablero de Juego (Grid) --- */
+.grid-container {
+    display: grid;
+    gap: 0.35rem; /* Espacio entre cartas */
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    max-height: calc(100vh - 160px); /* Ajuste para caber en pantalla vertical */
+    aspect-ratio: 4/5;
+}
+
+/* --- Carta de Memoria (Contenedor 3D) --- */
+.memory-card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d; /* Permite efecto de giro 3D */
+    transition: transform 0.4s;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.memory-card.flip {
+    transform: rotateY(180deg);
+}
+
+/* --- Caras de la Carta --- */
+.front-face,
+.back-face {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    border-radius: 12%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backface-visibility: hidden; /* Oculta la cara de atrás */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    user-select: none;
+}
+
+/* Cara Frontal (Emoji) */
+.front-face {
+    background: white;
+    transform: rotateY(180deg);
+    border: 2px solid #fff;
+    overflow: hidden;
+}
+
+.emoji-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    line-height: 1; 
+    transition: font-size 0.3s;
+}
+
+/* Cara Trasera (Signo ?) */
+.back-face {
+    background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+    border: 2px solid rgba(255,255,255,0.4);
+    color: white;
+}
+
+.back-face::after {
+    content: "?";
+    font-weight: 800;
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+    opacity: 0.8;
+}
+
+/* --- Animaciones --- */
+.match-animation {
+    animation: pop 0.4s ease-in-out;
+}
+
+@keyframes pop {
+    0% { transform: scale(1) rotateY(180deg); }
+    50% { transform: scale(1.15) rotateY(180deg); }
+    100% { transform: scale(1) rotateY(180deg); }
+}
+
+/* --- Modales y Utilidades --- */
+.hidden { display: none !important; }
+
+.modal-overlay {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+}
+
+.custom-modal {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255,255,255,0.5);
+}
+
+/* Efecto de caída de confeti */
+.confetti {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    background-color: #f00;
+    animation: fall linear forwards;
+    z-index: 100;
+    pointer-events: none;
+}
+
+@keyframes fall {
+    to { transform: translateY(110vh) rotate(720deg); }
+}
+
+.fade-in { animation: fadeIn 0.4s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
