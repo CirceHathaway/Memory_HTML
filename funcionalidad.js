@@ -1,14 +1,7 @@
-/**
- * Lógica del Juego de Memoria Emoji
- * Maneja modos de juego (Solo, 1vs1), niveles, puntajes y conexión a Firebase.
- */
-
-// Importaciones desde CDN para que funcione en el navegador sin instalaciones extra
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// --- TU CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDgSDHqBSqHZSMeIo63fHBU4cA5vr4pL8Q",
   authDomain: "memory-emoji.firebaseapp.com",
@@ -18,10 +11,8 @@ const firebaseConfig = {
   appId: "1:365295944626:web:410ad92a826b33f5501aab"
 };
 
-// Inicialización de la app
 let app, auth, db;
-// Usamos este ID para organizar los datos en tu base de datos
-const appId = 'emoji-memory'; 
+const appId = 'emoji-memory';
 
 try {
     app = initializeApp(firebaseConfig);
@@ -31,16 +22,10 @@ try {
     console.error("Error al iniciar Firebase:", error);
 }
 
-// --- VARIABLES GLOBALES DE ESTADO ---
 let currentUser = null;
 let globalHighScores = [];
 let isOfflineMode = false;
 
-// --- GESTIÓN DE CONEXIÓN ---
-
-/**
- * Actualiza el indicador visual de conexión en el menú principal.
- */
 function updateConnectionStatus(isOffline) {
     isOfflineMode = isOffline;
     const statusEl = document.getElementById('connection-status');
@@ -55,30 +40,21 @@ function updateConnectionStatus(isOffline) {
     }
 }
 
-/**
- * Intenta iniciar sesión en Firebase.
- */
 const initAuth = async () => {
     try {
         if (!auth) throw new Error("No Auth Instance");
         if (!navigator.onLine) throw new Error("Browser offline");
-        
-        // Iniciar sesión anónima (invisible para el usuario)
         await signInAnonymously(auth);
-        
-        // Si llegamos aquí, estamos conectados
         updateConnectionStatus(false);
     } catch (error) {
-        console.log("Auth falló o sin conexión, activando modo offline:", error);
+        console.log("Modo offline activado:", error);
         updateConnectionStatus(true);
     }
 };
 
-// Listeners del navegador para cambios de red
 window.addEventListener('online', () => { if (!currentUser) initAuth(); });
 window.addEventListener('offline', () => updateConnectionStatus(true));
 
-// Listener de estado de Firebase Auth
 if (auth) {
     onAuthStateChanged(auth, (user) => {
         currentUser = user;
@@ -91,35 +67,25 @@ if (auth) {
     updateConnectionStatus(true);
 }
 
-/**
- * Escucha cambios en la colección de récords en Firestore.
- */
 function setupRealtimeScores() {
     if (!db) return;
-    // Ruta en la base de datos: artifacts -> emoji-memory -> public -> data -> scores
     const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-    
     onSnapshot(colRef, (snapshot) => {
         const scores = [];
         snapshot.forEach(doc => {
             const data = doc.data();
             if(data.time && data.name) scores.push(data);
         });
-        // Ordenar por tiempo ascendente (menor es mejor)
         scores.sort((a, b) => a.time - b.time);
         globalHighScores = scores.slice(0, 5);
         
-        // Actualizar UI si el modal está abierto
         if (!isOfflineMode && !document.getElementById('records-modal').classList.contains('hidden')) {
             renderRecordsList(document.getElementById('records-list-view'), globalHighScores, "Récords Globales");
         }
     }, (error) => {
-        console.error("Error fetching scores:", error);
         updateConnectionStatus(true);
     });
 }
-
-// --- PERSISTENCIA LOCAL (LocalStorage) ---
 
 function getLocalScores() {
     const stored = localStorage.getItem('emojiMemoryLocalScores');
@@ -135,22 +101,20 @@ function saveLocalScore(name, time) {
     return top5;
 }
 
-// Iniciar autenticación al cargar el script
 initAuth();
 
-// --- CONFIGURACIÓN DEL JUEGO ---
-
+// --- CONFIGURACIÓN DE NIVELES ---
 const levelConfig = [
     { level: 1,  cols: 3, rows: 2, pairs: 3 },
-    { level: 2,  cols: 3, rows: 4, pairs: 6 },
-    { level: 3,  cols: 4, rows: 4, pairs: 8 },
-    { level: 4,  cols: 4, rows: 5, pairs: 10 },
-    { level: 5,  cols: 4, rows: 6, pairs: 12 },
-    { level: 6,  cols: 5, rows: 6, pairs: 15 },
-    { level: 7,  cols: 5, rows: 6, pairs: 15 },
-    { level: 8,  cols: 6, rows: 6, pairs: 18 },
-    { level: 9,  cols: 6, rows: 7, pairs: 21 },
-    { level: 10, cols: 6, rows: 8, pairs: 24 }
+    { level: 2,  cols: 4, rows: 2, pairs: 4 },
+    { level: 3,  cols: 4, rows: 3, pairs: 6 },
+    { level: 4,  cols: 4, rows: 4, pairs: 8 },
+    { level: 5,  cols: 5, rows: 4, pairs: 10 },
+    { level: 6,  cols: 6, rows: 4, pairs: 12 },
+    { level: 7,  cols: 7, rows: 4, pairs: 14 },
+    { level: 8,  cols: 8, rows: 4, pairs: 16 },
+    { level: 9,  cols: 9, rows: 4, pairs: 18 },
+    { level: 10, cols: 10, rows: 4, pairs: 20 }
 ];
 
 const emojiPool = [
@@ -164,7 +128,6 @@ const emojiPool = [
     '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄'
 ];
 
-// --- VARIABLES DE JUEGO ---
 let currentLevelIndex = 0;
 let cards = [];
 let hasFlippedCard = false;
@@ -176,7 +139,6 @@ let timerInterval;
 let gameActive = false;
 let gameMode = 'solo';
 
-// Variables Versus (1 vs 1)
 let p1Name = "Jugador 1";
 let p2Name = "Jugador 2";
 let currentTurn = 1;
@@ -190,8 +152,6 @@ let p1TotalScore = 0;
 let p2TotalScore = 0;
 let consecutiveMatches = 0;
 
-// Referencias a elementos del DOM
-const body = document.body;
 const dom = {
     mainMenu: document.getElementById('main-menu'),
     gameContainer: document.getElementById('game-container'),
@@ -229,7 +189,6 @@ const dom = {
     btnViewRecords: document.getElementById('btn-view-records')
 };
 
-// --- FUNCIÓN MAESTRA DE REINICIO ---
 function resetAllGameData() {
     currentLevelIndex = 0;
     totalSeconds = 0;
@@ -253,17 +212,15 @@ function resetAllGameData() {
     dom.gameBoard.innerHTML = ''; 
 }
 
-// --- API PÚBLICA DEL JUEGO (window.gameApp) ---
 window.gameApp = {
-    
     openModeSelection: () => {
         dom.modeModal.classList.remove('hidden');
-        body.classList.add('modal-active');
+        document.body.classList.add('modal-active');
     },
     
     closeModeSelection: () => {
         dom.modeModal.classList.add('hidden');
-        body.classList.remove('modal-active');
+        document.body.classList.remove('modal-active');
     },
 
     startGameSolo: () => {
@@ -295,7 +252,7 @@ window.gameApp = {
         dom.namesModal.classList.add('hidden');
         dom.mainMenu.classList.add('hidden');
         dom.gameContainer.classList.remove('hidden');
-        body.classList.remove('modal-active');
+        document.body.classList.remove('modal-active');
 
         currentLevelIndex = 0;
         p1TotalWins = 0; p2TotalWins = 0;
@@ -319,7 +276,7 @@ window.gameApp = {
         dom.turnModal.classList.add('hidden');
         
         dom.mainMenu.classList.remove('hidden');
-        body.classList.remove('modal-active');
+        document.body.classList.remove('modal-active');
         document.querySelectorAll('.confetti').forEach(c => c.remove());
 
         resetAllGameData();
@@ -331,24 +288,24 @@ window.gameApp = {
         const subtitle = isOfflineMode ? "En este dispositivo" : "Top 5 Mundial";
         renderRecordsList(dom.recordsListView, scores, title, subtitle);
         dom.recordsModal.classList.remove('hidden');
-        body.classList.add('modal-active');
+        document.body.classList.add('modal-active');
     },
 
     closeRecordsModal: () => {
         dom.recordsModal.classList.add('hidden');
         if (dom.victoryModal.classList.contains('hidden')) {
-            body.classList.remove('modal-active');
+            document.body.classList.remove('modal-active');
         }
     },
 
     confirmExit: () => {
         dom.exitModal.classList.remove('hidden');
-        body.classList.add('modal-active');
+        document.body.classList.add('modal-active');
     },
 
     closeExitModal: () => {
         dom.exitModal.classList.add('hidden');
-        body.classList.remove('modal-active');
+        document.body.classList.remove('modal-active');
     },
 
     exitToMenu: () => {
@@ -360,7 +317,7 @@ window.gameApp = {
 
     nextLevel: () => {
         dom.levelModal.classList.add('hidden');
-        body.classList.remove('modal-active');
+        document.body.classList.remove('modal-active');
         currentLevelIndex++;
         resetLevelVariables();
         
@@ -398,10 +355,14 @@ window.gameApp = {
     }
 };
 
+// --- FUNCIÓN CORREGIDA: Volver al menú tras guardar ---
 function finishSave() {
     dom.recordForm.classList.add('hidden');
     dom.victoryModal.classList.add('hidden');
-    window.gameApp.openRecordsModal();
+    // Ahora llama a showMenu para ocultar el tablero y resetear
+    window.gameApp.showMenu();
+    // Opcional: Si NO quieres que abra los récords automáticamente, borra la línea de abajo.
+    // window.gameApp.openRecordsModal(); 
 }
 
 function resetLevelVariables() {
@@ -448,20 +409,15 @@ function initLevel() {
 
 function renderBoard(config) {
     dom.gameBoard.innerHTML = '';
-    dom.gameBoard.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
     
-    let fontSize = '4rem'; 
-    
-    if (config.cols === 4) fontSize = '2.8rem';
-    if (config.cols === 5) fontSize = '2rem';
-    if (config.cols >= 6)  fontSize = '1.5rem';
-    
-    if (config.rows >= 4) fontSize = '2.5rem';
-    if (config.rows >= 5) fontSize = '2rem';
-    if (config.rows >= 7) fontSize = '1.4rem';
+    // --- LÓGICA HÍBRIDA ---
+    // Si es móvil (pantalla chica), forzamos máximo 4 columnas para que baje.
+    // Si es escritorio, respetamos la config (10 columnas).
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const columnsToUse = isMobile ? Math.min(4, config.cols) : config.cols;
 
-    if (config.cols >= 5 && config.rows >= 6) fontSize = '1.2rem';
-
+    dom.gameBoard.style.gridTemplateColumns = `repeat(${columnsToUse}, 1fr)`;
+    
     cards.forEach((emoji, index) => {
         const card = document.createElement('div');
         card.classList.add('memory-card', 'fade-in');
@@ -473,7 +429,6 @@ function renderBoard(config) {
         const emojiSpan = document.createElement('span');
         emojiSpan.classList.add('emoji-content');
         emojiSpan.textContent = emoji;
-        emojiSpan.style.fontSize = fontSize;
         frontFace.appendChild(emojiSpan);
 
         const backFace = document.createElement('div');
@@ -536,12 +491,10 @@ function checkForMatch() {
 
 function processMatch() {
     lockBoard = true;
-    
     if (gameMode === 'versus') {
         consecutiveMatches++;
         let points = 10;
         if (consecutiveMatches >= 5) points *= 3;
-        
         if (currentTurn === 1) {
             p1Score += points;
             p1Pairs++;
@@ -656,7 +609,7 @@ function handleLevelComplete() {
         setTimeout(() => {
             dom.modalLevelNum.textContent = levelConfig[currentLevelIndex].level;
             dom.levelModal.classList.remove('hidden');
-            body.classList.add('modal-active');
+            document.body.classList.add('modal-active');
             createConfetti(20);
         }, 500);
     } else {
@@ -733,7 +686,7 @@ function handleGameVictory() {
     }
 
     dom.victoryModal.classList.remove('hidden');
-    body.classList.add('modal-active');
+    document.body.classList.add('modal-active');
 }
 
 function createConfetti(amount) {

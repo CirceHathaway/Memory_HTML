@@ -1,22 +1,28 @@
 /* --- Importación de Fuentes --- */
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
 
-/* --- Estilos Generales --- */
+/* --- ESTILOS BASE (MÓVIL / DEFAULT) --- */
 body {
-    font-family: 'Fredoka', sans-serif; /* Fuente amigable */
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Fondo degradado */
+    font-family: 'Fredoka', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
+    width: 100vw;
+    padding-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    /* MÓVIL: Permitir scroll vertical */
+    overflow-y: auto; 
     overflow-x: hidden;
-    padding-top: 2rem;
 }
 
-/* Efecto blur en el fondo cuando un modal está activo */
 body.modal-active > *:not(.modal-overlay) {
     filter: blur(5px);
     transition: filter 0.3s ease;
 }
 
-/* --- Botones del Menú Principal --- */
+/* --- Botones --- */
 .menu-btn {
     background: white;
     color: #4f46e5;
@@ -37,53 +43,34 @@ body.modal-active > *:not(.modal-overlay) {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* --- Tablero de Juego (Grid) --- */
+/* --- GRID BASE (MÓVIL) --- */
 .grid-container {
     display: grid;
-    gap: 0.35rem; /* Espacio entre cartas */
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
-    max-height: calc(100vh - 160px); /* Ajuste para caber en pantalla vertical */
-    aspect-ratio: 4/5;
+    gap: 0.6rem;
+    
+    /* MÓVIL: Ancho casi total */
+    width: 95%; 
+    height: fit-content;
+    
+    /* MÓVIL: Márgenes para evitar choque con HUD y permitir scroll abajo */
+    margin-top: 1rem; 
+    margin-bottom: 3rem;
+    
+    align-content: start;
+    justify-content: center;
 }
 
-/* --- Carta de Memoria (Contenedor 3D) --- */
+/* --- CARTA BASE (MÓVIL) --- */
 .memory-card {
-    width: 100%;
-    height: 100%;
     position: relative;
-    transform-style: preserve-3d; /* Permite efecto de giro 3D */
+    transform-style: preserve-3d;
     transition: transform 0.4s;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-}
 
-.memory-card.flip {
-    transform: rotateY(180deg);
-}
-
-/* --- Caras de la Carta --- */
-.front-face,
-.back-face {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    border-radius: 12%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    backface-visibility: hidden; /* Oculta la cara de atrás */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-    user-select: none;
-}
-
-/* Cara Frontal (Emoji) */
-.front-face {
-    background: white;
-    transform: rotateY(180deg);
-    border: 2px solid #fff;
-    overflow: hidden;
+    /* MÓVIL: Altura fija cómoda para el dedo */
+    height: 90px; 
+    aspect-ratio: 3.5/4.5;
 }
 
 .emoji-content {
@@ -93,24 +80,91 @@ body.modal-active > *:not(.modal-overlay) {
     width: 100%;
     height: 100%;
     line-height: 1; 
-    transition: font-size 0.3s;
+    /* MÓVIL: Tamaño fijo */
+    font-size: 3rem; 
 }
 
-/* Cara Trasera (Signo ?) */
+.back-face::after {
+    content: "?";
+    font-weight: 800;
+    font-size: 2.5rem;
+    opacity: 0.8;
+}
+
+/* =========================================
+   MEDIA QUERY: ESCRITORIO (TU CÓDIGO ORIGINAL)
+   ========================================= */
+@media (min-width: 768px) {
+    body {
+        overflow: hidden; /* Bloquear scroll en PC */
+    }
+
+    .grid-container {
+        gap: 0.8rem;
+        width: fit-content;
+        
+        /* Restaurar márgenes automáticos para centrado vertical */
+        margin-top: auto; 
+        margin-bottom: auto;
+        
+        align-content: center;
+        
+        /* Limites originales de escritorio */
+        max-height: 70vh; 
+        max-width: 98vw;
+    }
+
+    .memory-card {
+        /* Restaurar cálculo de altura relativo */
+        height: 16vh; 
+        max-height: 220px;
+        min-height: 80px;
+        aspect-ratio: 4/5;
+    }
+
+    .emoji-content {
+        font-size: 11vh; 
+        max-size: 6rem;
+    }
+
+    .back-face::after {
+        font-size: 8vh;
+    }
+}
+
+/* --- Resto de estilos comunes --- */
+.memory-card.flip {
+    transform: rotateY(180deg);
+}
+
+.front-face,
+.back-face {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    border-radius: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backface-visibility: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+    user-select: none;
+}
+
+.front-face {
+    background: white;
+    transform: rotateY(180deg);
+    border: 3px solid #fff;
+    overflow: hidden;
+    padding: 0;
+}
+
 .back-face {
     background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
     border: 2px solid rgba(255,255,255,0.4);
     color: white;
 }
 
-.back-face::after {
-    content: "?";
-    font-weight: 800;
-    font-size: clamp(1.5rem, 5vw, 2.5rem);
-    opacity: 0.8;
-}
-
-/* --- Animaciones --- */
 .match-animation {
     animation: pop 0.4s ease-in-out;
 }
@@ -121,7 +175,6 @@ body.modal-active > *:not(.modal-overlay) {
     100% { transform: scale(1) rotateY(180deg); }
 }
 
-/* --- Modales y Utilidades --- */
 .hidden { display: none !important; }
 
 .modal-overlay {
@@ -134,7 +187,6 @@ body.modal-active > *:not(.modal-overlay) {
     border: 1px solid rgba(255,255,255,0.5);
 }
 
-/* Efecto de caída de confeti */
 .confetti {
     position: fixed;
     width: 12px;

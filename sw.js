@@ -1,4 +1,4 @@
-const CACHE_NAME = 'emoji-memory-v1';
+const CACHE_NAME = 'emoji-memory-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

@@ -3,49 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Color de la barra de navegador en móviles -->
     <meta name="theme-color" content="#667eea">
     <title>Juego de Memoria Emoji</title>
     
-    <!-- Enlace al Manifiesto (Para instalar la App) -->
     <link rel="manifest" href="manifest.json">
-    
-    <!-- Icono para pestaña (asegúrate de tener un icon.png o borra esta línea) -->
     <link rel="icon" type="image/png" href="icon.png">
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Tus Estilos -->
     <link rel="stylesheet" href="index.css">
 </head>
 <body class="flex flex-col items-center justify-start min-h-screen px-3 pb-4 select-none">
 
-    <!-- MENÚ PRINCIPAL -->
     <div id="main-menu" class="w-full max-w-md flex flex-col items-center justify-center fade-in text-center mt-10">
-        <div class="mb-12">
-            <span class="text-7xl animate-bounce inline-block filter drop-shadow-lg">🧩</span>
-            <h1 class="text-6xl font-bold text-white text-shadow mt-4 drop-shadow-md tracking-tight">Memoria<br>Emoji</h1>
+        <div class="mb-8">
+            <span class="text-7xl animate-bounce inline-block filter drop-shadow-lg mb-2">🧩</span>
+            <h1 class="text-5xl font-bold text-white text-shadow mt-2 drop-shadow-md tracking-tight leading-tight">Memoria<br>Emoji</h1>
             <p class="text-white/90 mt-3 text-xl font-medium">¡Supera los 10 niveles!</p>
-            <p id="connection-status" class="text-white/60 text-xs mt-2 font-mono bg-black/20 px-2 py-1 rounded inline-block">Cargando...</p>
-            <!-- Botón de instalación (se muestra solo si es instalable) -->
-            <button id="install-btn" class="hidden mt-4 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full text-sm font-bold transition flex items-center gap-2 mx-auto">
+            
+            <p id="connection-status" class="text-white/60 text-xs mt-3 font-mono bg-black/20 px-3 py-1 rounded-full inline-block">Cargando...</p>
+            
+            <button id="install-btn" class="hidden mt-4 bg-white/20 hover:bg-white/30 text-white px-5 py-2 rounded-full text-base font-bold transition flex items-center gap-2 mx-auto border border-white/30">
                 ⬇️ Instalar App
             </button>
         </div>
 
-        <button onclick="window.gameApp.openModeSelection()" class="menu-btn hover:bg-indigo-50 text-indigo-600 transform transition hover:-translate-y-1">
+        <button onclick="window.gameApp.openModeSelection()" class="menu-btn hover:bg-indigo-50 text-indigo-600 transform transition hover:-translate-y-1 text-xl py-4 shadow-lg w-full">
             ▶️ Jugar
         </button>
         
-        <button onclick="window.gameApp.openRecordsModal()" class="menu-btn hover:bg-pink-50 text-pink-600 transform transition hover:-translate-y-1">
+        <button onclick="window.gameApp.openRecordsModal()" class="menu-btn hover:bg-pink-50 text-pink-600 transform transition hover:-translate-y-1 text-xl py-4 shadow-lg w-full mt-3">
             🏆 Récords Globales
         </button>
     </div>
 
-    <!-- CONTENEDOR DEL JUEGO -->
-    <div id="game-container" class="w-full flex flex-col items-center h-full hidden fade-in max-w-2xl">
-        <header class="w-full mb-4 text-white">
+    <div id="game-container" class="w-full flex flex-col items-center h-full hidden fade-in max-w-4xl">
+        <header class="w-full mb-4 text-white max-w-2xl">
             <div class="flex justify-between items-center mb-3 px-1">
                 <button onclick="window.gameApp.confirmExit()" class="text-sm font-bold bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full backdrop-blur-sm transition flex items-center gap-2 shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"/></svg>
@@ -76,9 +68,6 @@
         </div>
     </div>
 
-    <!-- MODALES (Selección, Nombres, Turno, Récords, Salida, Nivel, Victoria) -->
-    <!-- ... (El contenido de los modales es el mismo, lo he resumido para no repetir todo, usa el anterior si necesitas editarlo, pero la estructura base es igual) ... -->
-    
     <div id="mode-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden modal-overlay p-4 fade-in">
         <div class="custom-modal p-6 rounded-3xl shadow-2xl text-center w-full max-w-sm">
             <div class="text-5xl mb-4">🎮</div>
@@ -144,19 +133,13 @@
         </div>
     </div>
 
-    <!-- SCRIPT DE INSTALACIÓN Y LÓGICA -->
     <script type="module" src="funcionalidad.js"></script>
-    
-    <!-- REGISTRO DEL SERVICE WORKER (Para modo Offline) -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker registrado', reg))
-                    .catch(err => console.log('Error SW:', err));
+                navigator.serviceWorker.register('./sw.js').then(reg => console.log('Service Worker registrado', reg)).catch(err => console.log('Error SW:', err));
             });
         }
-        // Lógica para botón de instalación
         let deferredPrompt;
         const installBtn = document.getElementById('install-btn');
         window.addEventListener('beforeinstallprompt', (e) => {
