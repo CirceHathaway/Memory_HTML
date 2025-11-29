@@ -3,33 +3,32 @@
  * Maneja modos de juego (Solo, 1vs1), niveles, puntajes y conexión a Firebase.
  */
 
-// Importaciones de Firebase para base de datos y autenticación
+// Importaciones desde CDN para que funcione en el navegador sin instalaciones extra
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// --- CONFIGURACIÓN DE FIREBASE ---
-// Si descargas este código, necesitas poner tu propia configuración aquí para que funcione online.
-// Si no, el juego detectará el error y funcionará en modo "Local".
-let firebaseConfig;
-try {
-    // Intenta leer la config del entorno Canvas (no funcionará en local sin esto)
-    firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-} catch (e) {
-    // Placeholder vacío si falla
-    firebaseConfig = {}; 
-}
+// --- TU CONFIGURACIÓN DE FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDgSDHqBSqHZSMeIo63fHBU4cA5vr4pL8Q",
+  authDomain: "memory-emoji.firebaseapp.com",
+  projectId: "memory-emoji",
+  storageBucket: "memory-emoji.firebasestorage.app",
+  messagingSenderId: "365295944626",
+  appId: "1:365295944626:web:410ad92a826b33f5501aab"
+};
 
-// Inicialización de la app (envuelta en try-catch para evitar crash si no hay config)
+// Inicialización de la app
 let app, auth, db;
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'emoji-memory';
+// Usamos este ID para organizar los datos en tu base de datos
+const appId = 'emoji-memory'; 
 
 try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
 } catch (error) {
-    console.log("Firebase no configurado o error al iniciar. Modo Offline activado.");
+    console.error("Error al iniciar Firebase:", error);
 }
 
 // --- VARIABLES GLOBALES DE ESTADO ---
@@ -41,7 +40,6 @@ let isOfflineMode = false;
 
 /**
  * Actualiza el indicador visual de conexión en el menú principal.
- * @param {boolean} isOffline - Si es true, muestra modo local.
  */
 function updateConnectionStatus(isOffline) {
     isOfflineMode = isOffline;
@@ -62,15 +60,13 @@ function updateConnectionStatus(isOffline) {
  */
 const initAuth = async () => {
     try {
-        if (!auth) throw new Error("No Auth Instance"); // Si falló la config
+        if (!auth) throw new Error("No Auth Instance");
         if (!navigator.onLine) throw new Error("Browser offline");
         
-        // Usa token del entorno si existe, sino anónimo
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-            await signInAnonymously(auth);
-        }
+        // Iniciar sesión anónima (invisible para el usuario)
+        await signInAnonymously(auth);
+        
+        // Si llegamos aquí, estamos conectados
         updateConnectionStatus(false);
     } catch (error) {
         console.log("Auth falló o sin conexión, activando modo offline:", error);
@@ -92,7 +88,7 @@ if (auth) {
         }
     });
 } else {
-    updateConnectionStatus(true); // Default a offline si no hay auth
+    updateConnectionStatus(true);
 }
 
 /**
@@ -100,6 +96,7 @@ if (auth) {
  */
 function setupRealtimeScores() {
     if (!db) return;
+    // Ruta en la base de datos: artifacts -> emoji-memory -> public -> data -> scores
     const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
     
     onSnapshot(colRef, (snapshot) => {
@@ -143,7 +140,6 @@ initAuth();
 
 // --- CONFIGURACIÓN DEL JUEGO ---
 
-// Definición de los 10 niveles (Filas, Columnas, Pares)
 const levelConfig = [
     { level: 1,  cols: 3, rows: 2, pairs: 3 },
     { level: 2,  cols: 3, rows: 4, pairs: 6 },
@@ -157,7 +153,6 @@ const levelConfig = [
     { level: 10, cols: 6, rows: 8, pairs: 24 }
 ];
 
-// Banco de Emojis para usar en las cartas
 const emojiPool = [
     '❤️', '✨', '✅', '😂', '⭐', '🌼',
     '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
@@ -171,20 +166,20 @@ const emojiPool = [
 
 // --- VARIABLES DE JUEGO ---
 let currentLevelIndex = 0;
-let cards = []; // Array de cartas actual
+let cards = [];
 let hasFlippedCard = false;
-let lockBoard = false; // Bloqueo para evitar clicks rápidos
+let lockBoard = false;
 let firstCard, secondCard;
 let matches = 0;
 let totalSeconds = 0;
 let timerInterval;
 let gameActive = false;
-let gameMode = 'solo'; // 'solo' o 'versus'
+let gameMode = 'solo';
 
 // Variables Versus (1 vs 1)
 let p1Name = "Jugador 1";
 let p2Name = "Jugador 2";
-let currentTurn = 1; // 1 o 2
+let currentTurn = 1;
 let p1Score = 0;
 let p2Score = 0;
 let p1Pairs = 0;
@@ -193,7 +188,7 @@ let p1TotalWins = 0;
 let p2TotalWins = 0;
 let p1TotalScore = 0;
 let p2TotalScore = 0;
-let consecutiveMatches = 0; // Para racha de puntos
+let consecutiveMatches = 0;
 
 // Referencias a elementos del DOM
 const body = document.body;
@@ -235,12 +230,7 @@ const dom = {
 };
 
 // --- FUNCIÓN MAESTRA DE REINICIO ---
-/**
- * Restablece TODAS las variables del juego a su estado inicial.
- * Se llama al volver al menú para asegurar que la próxima partida empiece de 0.
- */
 function resetAllGameData() {
-    // Variables generales
     currentLevelIndex = 0;
     totalSeconds = 0;
     matches = 0;
@@ -250,7 +240,6 @@ function resetAllGameData() {
     firstCard = null;
     secondCard = null;
     
-    // Variables Versus
     p1Score = 0; p2Score = 0;
     p1Pairs = 0; p2Pairs = 0;
     p1TotalWins = 0; p2TotalWins = 0;
@@ -258,7 +247,6 @@ function resetAllGameData() {
     consecutiveMatches = 0;
     currentTurn = 1;
     
-    // Limpieza visual
     dom.levelDisplay.textContent = '1';
     dom.leftStatValue.textContent = '00:00'; 
     dom.rightStatValue.textContent = '--';
@@ -266,10 +254,8 @@ function resetAllGameData() {
 }
 
 // --- API PÚBLICA DEL JUEGO (window.gameApp) ---
-// Funciones accesibles desde el HTML (onclick)
 window.gameApp = {
     
-    // Abre el modal para elegir Solo o Versus
     openModeSelection: () => {
         dom.modeModal.classList.remove('hidden');
         body.classList.add('modal-active');
@@ -280,32 +266,27 @@ window.gameApp = {
         body.classList.remove('modal-active');
     },
 
-    // Inicia modo Solitario
     startGameSolo: () => {
         gameMode = 'solo';
         window.gameApp.closeModeSelection();
         dom.mainMenu.classList.add('hidden');
         dom.gameContainer.classList.remove('hidden');
         
-        // Configura el HUD para Solo
         dom.leftStatLabel.textContent = "TIEMPO";
         dom.rightStatLabel.textContent = "PARES";
         dom.leftStatLabel.className = "text-[10px] uppercase tracking-wider opacity-90 font-bold truncate w-full text-center px-1";
         dom.rightStatLabel.className = "text-[10px] uppercase tracking-wider opacity-90 font-bold truncate w-full text-center px-1";
         
-        // Reinicio de seguridad
         currentLevelIndex = 0;
         totalSeconds = 0;
         initLevel();
     },
 
-    // Abre modal de nombres para Versus
     openNamesModal: () => {
         dom.modeModal.classList.add('hidden');
         dom.namesModal.classList.remove('hidden');
     },
 
-    // Inicia modo Versus
     startVersusGame: () => {
         gameMode = 'versus';
         p1Name = dom.p1Input.value.trim() || "JUGADOR 1";
@@ -316,21 +297,18 @@ window.gameApp = {
         dom.gameContainer.classList.remove('hidden');
         body.classList.remove('modal-active');
 
-        // Reinicio completo de estado
         currentLevelIndex = 0;
         p1TotalWins = 0; p2TotalWins = 0;
         p1TotalScore = 0; p2TotalScore = 0;
         resetLevelVariables();
         
-        showTurnModal(); // Mostrar quién empieza
+        showTurnModal();
     },
 
-    // Vuelve al menú principal y resetea todo
     showMenu: () => {
         clearInterval(timerInterval);
         timerInterval = null;
         
-        // Ocultar todos los elementos de juego
         dom.gameContainer.classList.add('hidden');
         dom.levelModal.classList.add('hidden');
         dom.victoryModal.classList.add('hidden');
@@ -344,11 +322,9 @@ window.gameApp = {
         body.classList.remove('modal-active');
         document.querySelectorAll('.confetti').forEach(c => c.remove());
 
-        // LLAMADA CRÍTICA: Reiniciar variables al salir
         resetAllGameData();
     },
 
-    // Gestión de Modal de Récords
     openRecordsModal: () => {
         const scores = isOfflineMode ? getLocalScores() : globalHighScores;
         const title = isOfflineMode ? "Récords Locales" : "Récords Globales";
@@ -360,13 +336,11 @@ window.gameApp = {
 
     closeRecordsModal: () => {
         dom.recordsModal.classList.add('hidden');
-        // Solo quitar blur si no hay victoria detrás
         if (dom.victoryModal.classList.contains('hidden')) {
             body.classList.remove('modal-active');
         }
     },
 
-    // Gestión de Salida
     confirmExit: () => {
         dom.exitModal.classList.remove('hidden');
         body.classList.add('modal-active');
@@ -384,7 +358,6 @@ window.gameApp = {
 
     restartLevel: () => initLevel(),
 
-    // Ir al siguiente nivel
     nextLevel: () => {
         dom.levelModal.classList.add('hidden');
         body.classList.remove('modal-active');
@@ -398,11 +371,9 @@ window.gameApp = {
         }
     },
 
-    // Guardar puntaje (Solo modo Solitario)
     saveScore: async () => {
         const name = dom.playerNameInput.value.trim() || 'ANÓNIMO';
         
-        // Intenta guardar online, fallback a local
         if (isOfflineMode) {
             saveLocalScore(name.toUpperCase(), totalSeconds);
             finishSave();
@@ -427,14 +398,12 @@ window.gameApp = {
     }
 };
 
-// Cierra modales tras guardar
 function finishSave() {
     dom.recordForm.classList.add('hidden');
     dom.victoryModal.classList.add('hidden');
     window.gameApp.openRecordsModal();
 }
 
-// Resetea variables temporales del nivel (sin borrar totales)
 function resetLevelVariables() {
     if (gameMode === 'solo') {
         updateTimeDisplay();
@@ -449,7 +418,6 @@ function resetLevelVariables() {
     }
 }
 
-// --- INICIO DE NIVEL ---
 function initLevel() {
     gameActive = true;
     lockBoard = false;
@@ -458,11 +426,9 @@ function initLevel() {
     secondCard = null;
     matches = 0;
     
-    // Obtener configuración del nivel actual
     const config = levelConfig[currentLevelIndex];
     dom.levelDisplay.textContent = config.level;
     
-    // Selección y mezcla de emojis
     const shuffledPool = [...emojiPool].sort(() => 0.5 - Math.random());
     const selectedEmojis = shuffledPool.slice(0, config.pairs);
     cards = [...selectedEmojis, ...selectedEmojis];
@@ -470,38 +436,32 @@ function initLevel() {
 
     renderBoard(config);
     
-    // Actualizar UI
     if (gameMode === 'versus') {
         updateVersusHUD();
     } else {
         updatePairsInfo(levelConfig[currentLevelIndex].pairs);
     }
 
-    // Iniciar timer si corresponde
     clearInterval(timerInterval);
     if (gameMode === 'solo') startTimer();
 }
 
-// --- RENDERIZADO DEL TABLERO ---
 function renderBoard(config) {
     dom.gameBoard.innerHTML = '';
     dom.gameBoard.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
     
-    // --- Lógica de Tamaño de Fuente Adaptable ---
-    // Ajusta el tamaño del emoji según la densidad de cartas
     let fontSize = '4rem'; 
     
     if (config.cols === 4) fontSize = '2.8rem';
     if (config.cols === 5) fontSize = '2rem';
     if (config.cols >= 6)  fontSize = '1.5rem';
     
-    if (config.rows >= 4) fontSize = '2.5rem'; // Ajuste crítico para nivel 2
+    if (config.rows >= 4) fontSize = '2.5rem';
     if (config.rows >= 5) fontSize = '2rem';
     if (config.rows >= 7) fontSize = '1.4rem';
 
-    if (config.cols >= 5 && config.rows >= 6) fontSize = '1.2rem'; // Casos muy densos
+    if (config.cols >= 5 && config.rows >= 6) fontSize = '1.2rem';
 
-    // Crear elementos del DOM para cada carta
     cards.forEach((emoji, index) => {
         const card = document.createElement('div');
         card.classList.add('memory-card', 'fade-in');
@@ -531,7 +491,6 @@ function updatePairsInfo(totalPairs) {
     dom.rightStatValue.textContent = `${matches}/${totalPairs}`;
 }
 
-// Actualiza la interfaz Versus (nombres, colores, puntos)
 function updateVersusHUD() {
     dom.leftStatLabel.textContent = p1Name.toUpperCase();
     dom.rightStatLabel.textContent = p2Name.toUpperCase();
@@ -540,7 +499,6 @@ function updateVersusHUD() {
     dom.leftStatValue.textContent = p1Score;
     dom.rightStatValue.textContent = p2Score;
     
-    // Resaltar fondo del jugador activo
     if (currentTurn === 1) {
         dom.leftStatContainer.classList.add('bg-white/30', 'shadow-inner');
         dom.rightStatContainer.classList.remove('bg-white/30', 'shadow-inner');
@@ -553,8 +511,6 @@ function updateVersusHUD() {
         dom.rightStatValue.classList.add('text-green-100');
     }
 }
-
-// --- MECÁNICA DE JUEGO ---
 
 function flipCard() {
     if (lockBoard) return;
@@ -581,11 +537,10 @@ function checkForMatch() {
 function processMatch() {
     lockBoard = true;
     
-    // Sistema de Puntos y Combos (Versus)
     if (gameMode === 'versus') {
         consecutiveMatches++;
         let points = 10;
-        if (consecutiveMatches >= 5) points *= 3; // Multiplicador x3
+        if (consecutiveMatches >= 5) points *= 3;
         
         if (currentTurn === 1) {
             p1Score += points;
@@ -601,7 +556,6 @@ function processMatch() {
         firstCard.querySelector('.front-face').classList.add('match-animation');
         secondCard.querySelector('.front-face').classList.add('match-animation');
         
-        // Clonar nodos para eliminar listeners
         const newFirst = firstCard.cloneNode(true);
         const newSecond = secondCard.cloneNode(true);
         firstCard.parentNode.replaceChild(newFirst, firstCard);
@@ -623,7 +577,7 @@ function processMatch() {
 function processMiss() {
     lockBoard = true;
     if (gameMode === 'versus') {
-        consecutiveMatches = 0; // Romper combo
+        consecutiveMatches = 0;
     }
 
     setTimeout(() => {
@@ -631,7 +585,6 @@ function processMiss() {
         secondCard.classList.remove('flip');
         resetBoardState();
         
-        // Cambio de turno al fallar
         if (gameMode === 'versus') {
             switchTurn();
         }
@@ -660,14 +613,11 @@ function showTurnModal() {
     }, 1500);
 }
 
-// --- FINALIZACIÓN DE NIVEL Y JUEGO ---
-
 function handleLevelComplete() {
     clearInterval(timerInterval);
     timerInterval = null;
     gameActive = false;
 
-    // Determinar ganador del nivel en Versus
     if (gameMode === 'versus') {
         p1TotalScore += p1Score;
         p2TotalScore += p2Score;
@@ -675,7 +625,6 @@ function handleLevelComplete() {
         let winnerName = "Empate";
         let winnerColor = "text-gray-600";
 
-        // Regla: Mayor puntaje gana el nivel
         if (p1Score > p2Score) {
             winnerName = p1Name;
             winnerColor = "text-red-600";
@@ -685,7 +634,6 @@ function handleLevelComplete() {
             winnerColor = "text-green-600";
             p2TotalWins++;
         } else {
-            // Empate en puntos -> Mayor cantidad de pares
             if (p1Pairs > p2Pairs) { 
                 winnerName = p1Name; 
                 winnerColor = "text-red-600";
@@ -733,7 +681,6 @@ function handleGameVictory() {
     createConfetti(100);
     
     if (gameMode === 'solo') {
-        // Victoria Solo
         dom.victoryTitle.textContent = "¡GANASTE!";
         dom.victorySubtitle.textContent = "Has completado los 10 niveles.";
         dom.finalStatLabel.textContent = "TIEMPO TOTAL";
@@ -741,7 +688,6 @@ function handleGameVictory() {
         dom.finalStatValue.className = "text-4xl font-bold text-indigo-600 font-mono break-words";
         dom.btnViewRecords.classList.remove('hidden');
         
-        // Verificar Récord
         const scoresToCheck = isOfflineMode ? getLocalScores() : globalHighScores;
         const isHighScore = scoresToCheck.length < 5 || totalSeconds < scoresToCheck[scoresToCheck.length - 1]?.time;
         if (isHighScore || scoresToCheck.length < 5) {
@@ -753,7 +699,6 @@ function handleGameVictory() {
             dom.noRecordMsg.classList.remove('hidden');
         }
     } else {
-        // Victoria Versus
         dom.recordForm.classList.add('hidden');
         dom.noRecordMsg.classList.add('hidden');
         dom.btnViewRecords.classList.add('hidden');
@@ -761,7 +706,6 @@ function handleGameVictory() {
         let gameWinner = "";
         let winnerColor = "text-indigo-600";
         
-        // Determinar ganador global
         if (p1TotalWins > p2TotalWins) {
             gameWinner = p1Name;
             winnerColor = "text-red-600";
@@ -769,7 +713,6 @@ function handleGameVictory() {
             gameWinner = p2Name;
             winnerColor = "text-green-600";
         } else {
-            // Empate en niveles -> Puntos totales
             if (p1TotalScore > p2TotalScore) {
                 gameWinner = p1Name;
                 winnerColor = "text-red-600";
@@ -807,7 +750,6 @@ function createConfetti(amount) {
     }
 }
 
-// Función auxiliar para renderizar listas de puntajes (reutilizada en modales)
 function renderRecordsList(container, scores, title, subtitle) {
     container.innerHTML = '';
     
