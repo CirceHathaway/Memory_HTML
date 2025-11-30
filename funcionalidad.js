@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+// --- TU CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDgSDHqBSqHZSMeIo63fHBU4cA5vr4pL8Q",
   authDomain: "memory-emoji.firebaseapp.com",
@@ -352,17 +353,36 @@ window.gameApp = {
                 finishSave();
             }
         }
+    },
+
+    // --- FUNCIÓN AGREGADA PARA COMPARTIR ---
+    shareGame: async () => {
+        const shareData = {
+            title: 'Juego de Memoria Emoji 🧩',
+            text: '¿Puedes superar los 10 niveles? ¡Juega ahora!',
+            url: window.location.href // Comparte la URL actual
+        };
+
+        try {
+            if (navigator.share) {
+                // Compartir nativo (Celulares)
+                await navigator.share(shareData);
+            } else {
+                // Copiar al portapapeles (PC)
+                await navigator.clipboard.writeText(shareData.url);
+                alert('¡Enlace copiado al portapapeles! 📋');
+            }
+        } catch (err) {
+            console.error('Error al compartir:', err);
+        }
     }
 };
 
-// --- FUNCIÓN CORREGIDA: Volver al menú tras guardar ---
 function finishSave() {
     dom.recordForm.classList.add('hidden');
     dom.victoryModal.classList.add('hidden');
-    // Ahora llama a showMenu para ocultar el tablero y resetear
     window.gameApp.showMenu();
-    // Opcional: Si NO quieres que abra los récords automáticamente, borra la línea de abajo.
-    // window.gameApp.openRecordsModal(); 
+    window.gameApp.openRecordsModal();
 }
 
 function resetLevelVariables() {
@@ -410,11 +430,17 @@ function initLevel() {
 function renderBoard(config) {
     dom.gameBoard.innerHTML = '';
     
-    // --- LÓGICA HÍBRIDA ---
-    // Si es móvil (pantalla chica), forzamos máximo 4 columnas para que baje.
-    // Si es escritorio, respetamos la config (10 columnas).
+    // DETECCIÓN DE PANTALLA:
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    const columnsToUse = isMobile ? Math.min(4, config.cols) : config.cols;
+    let columnsToUse;
+
+    if (isMobile) {
+        // En celular: MÁXIMO 4 columnas
+        columnsToUse = Math.min(4, config.cols);
+    } else {
+        // En escritorio: ORIGINAL
+        columnsToUse = config.cols;
+    }
 
     dom.gameBoard.style.gridTemplateColumns = `repeat(${columnsToUse}, 1fr)`;
     
