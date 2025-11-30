@@ -61,7 +61,7 @@ Para ejecutar este proyecto en tu computadora local:
 ├── 📄 manifest.json     # Metadatos para instalar la App
 ├── 📄 sw.js             # Service Worker para funcionamiento Offline
 └── 🖼️ icon.png          # Icono de la aplicación 
-
+```
 ## 📱 **Instalación en Móvil (Android/iOS)**
 1. Sube tu carpeta a un hosting seguro (HTTPS) como GitHub Pages o Vercel.
 2. Abre el enlace en tu celular.
