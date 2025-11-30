@@ -53,8 +53,7 @@ Para ejecutar este proyecto en tu computadora local:
    - Gana quien tenga más niveles ganados al final del juego. (En caso de empate, define el puntaje total).
 
 ## 📂 **Estructura del Proyecto**
-
-Plaintext
+```text
 📁 JuegoEmoji/
 ├── 📄 index.html        # Estructura principal y maquetación
 ├── 📄 index.css         # Estilos, animaciones y media queries
