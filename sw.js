@@ -1,4 +1,4 @@
-const CACHE_NAME = 'emoji-memory-v3';
+const CACHE_NAME = 'emoji-memory-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -6,8 +6,7 @@ const ASSETS_TO_CACHE = [
   './funcionalidad.js',
   './manifest.json',
   './icon.png',
-  // Quitamos CDN externos para evitar errores CORS en la instalación del SW
-  // El navegador gestionará su propia caché HTTP para estos recursos si es posible
+  // Eliminado el CDN de Tailwind para evitar error de CORS al instalar
 ];
 
 self.addEventListener('install', (e) => {
@@ -33,11 +32,10 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Estrategia: Cache First, falling back to Network
   e.respondWith(
     caches.match(e.request).then((res) => {
       return res || fetch(e.request).catch(() => {
-          // Fallback opcional (podría ser una página offline.html)
+          // Fallback opcional
       });
     })
   );
