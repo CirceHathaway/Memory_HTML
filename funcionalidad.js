@@ -360,13 +360,15 @@ window.gameApp = {
         const shareData = {
             title: 'Juego de Memoria Emoji 🧩',
             text: '¿Puedes superar los 10 niveles? ¡Juega ahora!',
-            url: 'https://circehathaway.github.io/Memory_HTML/'
+            url: window.location.href // Comparte la URL actual
         };
 
         try {
             if (navigator.share) {
+                // Compartir nativo (Celulares)
                 await navigator.share(shareData);
             } else {
+                // Copiar al portapapeles (PC)
                 await navigator.clipboard.writeText(shareData.url);
                 alert('¡Enlace copiado al portapapeles! 📋');
             }
@@ -380,7 +382,6 @@ function finishSave() {
     dom.recordForm.classList.add('hidden');
     dom.victoryModal.classList.add('hidden');
     window.gameApp.showMenu();
-    window.gameApp.openRecordsModal();
 }
 
 function resetLevelVariables() {
@@ -428,12 +429,15 @@ function initLevel() {
 function renderBoard(config) {
     dom.gameBoard.innerHTML = '';
     
+    // DETECCIÓN DE PANTALLA:
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
     let columnsToUse;
 
     if (isMobile) {
+        // En celular: MÁXIMO 4 columnas
         columnsToUse = Math.min(4, config.cols);
     } else {
+        // En escritorio: ORIGINAL
         columnsToUse = config.cols;
     }
 
