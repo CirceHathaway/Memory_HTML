@@ -1,21 +1,21 @@
-const CACHE_NAME = 'emoji-memory-v6';
+const CACHE_NAME = 'emoji-memory-v7'; 
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './index.css',
   './funcionalidad.js',
   './manifest.json',
-  './icon.png',
-  // Eliminado el CDN de Tailwind para evitar error de CORS al instalar
+  './icon.png'
 ];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // console.log('[SW] Cacheando archivos locales...');
+      // Solo guardamos los archivos locales críticos
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((res) => {
       return res || fetch(e.request).catch(() => {
-          // Fallback opcional
+          // Si falla internet y no está en caché, no hacemos nada
       });
     })
   );
